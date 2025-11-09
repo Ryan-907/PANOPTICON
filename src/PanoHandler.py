@@ -70,7 +70,7 @@ class Panorama:
         self.socials = self.dataset.filter(lambda x:x['content-type'] == self.content_types[1])
         self.forums = self.dataset.filter(lambda x:x['content-type'] == self.content_types[2])
         self.reviews = self.dataset.filter(lambda x:x['content-type'] == self.content_types[3])
-        self.commetns = self.dataset.filter(lambda x:x['content-type'] == self.content_types[4])
+        self.comments = self.dataset.filter(lambda x:x['content-type'] == self.content_types[4])
         self.ads = self.dataset.filter(lambda x:x['content-type'] == self.content_types[5])
     
  
