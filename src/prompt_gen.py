@@ -3,7 +3,7 @@ from transformers import AutoTokenizer, AutoModelForCausalLM, pipeline
 from PanoHandler import Panorama, PanoPlus
 import torch
 
-MODEL ='meta-llama/Llama-3.1-8B-Instruct'
+MODEL ='Meta-Llama-3.1-70B-Instruct.Q4_K_M.gguf'
 
 #Accessing prompt
 current_directory = Path(__file__).parent
@@ -13,7 +13,7 @@ with open(prompt_gen_prompt, 'r', encoding='utf-8') as f:
     instruction = f.read()
 
 #setting up model and generation
-model = AutoModelForCausalLM.from_pretrained(MODEL, torch_dtype=torch.bfloat16, device_map='auto', low_cpu_mem_usage=True)
+model = AutoModelForCausalLM.from_pretrained(MODEL, dtype=torch.bfloat16, device_map='auto', low_cpu_mem_usage=True)
 
 tokenizer = AutoTokenizer.from_pretrained(MODEL)
 
@@ -47,7 +47,7 @@ for uid in ids[1:]:
 
     prompts = [{"role":"system", "content": f'{instruction}'}, {'role':'user', 'content': f'Article: {article}. Content: {content} PII List: {pii}'}]
    
-    output = gener(prompts, truncation=True)
+    output = gener(prompts, truncation=True, max_length=300)
     print(output[0]['generated_text'])
     input()
     del output
