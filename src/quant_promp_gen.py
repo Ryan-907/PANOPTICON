@@ -3,7 +3,7 @@ from transformers import AutoTokenizer, AutoModelForCausalLM, pipeline
 from PanoHandler import Panorama, PanoPlus
 import torch
 
-MODEL ='Meta-Llama-3.1-70B-Instruct.Q4_K_M.gguf'
+MODEL ='meta-llama/Meta-Llama-3.1-70B-Instruct'
 
 #Accessing prompt
 current_directory = Path(__file__).parent
@@ -13,7 +13,7 @@ with open(prompt_gen_prompt, 'r', encoding='utf-8') as f:
     instruction = f.read()
 
 #setting up model and generation
-model = AutoModelForCausalLM.from_pretrained(MODEL, dtype=torch.bfloat16, device_map='auto', low_cpu_mem_usage=True)
+model = AutoModelForCausalLM.from_pretrained(MODEL, device_map='auto', low_cpu_mem_usage=True, load_in_4bit=True, bnb_4bit_quant_type="nf4", bnb_4bit_compute_dtype=torch.bfloat16)
 
 tokenizer = AutoTokenizer.from_pretrained(MODEL)
 
