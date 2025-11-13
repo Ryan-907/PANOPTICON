@@ -7,7 +7,7 @@ MODEL ="meta-llama/Llama-3.1-8B-Instruct"
 
 #Accessing prompt
 current_directory = Path(__file__).parent
-prompt_gen_prompt = current_directory.parent / 'prompts' / 'synthetic_prompt_gen_prompt.md'
+prompt_gen_prompt = current_directory.parent / 'prompts' / 'gen_editorial_prompt.md'
 
 with open(prompt_gen_prompt, 'r', encoding='utf-8') as f:
     instruction = f.read()
@@ -16,8 +16,6 @@ with open(prompt_gen_prompt, 'r', encoding='utf-8') as f:
 model = AutoModelForCausalLM.from_pretrained(MODEL, dtype=torch.bfloat16, device_map='auto', low_cpu_mem_usage=True)
 
 tokenizer = AutoTokenizer.from_pretrained(MODEL)
-device = torch.device("cuda")
-model.to(device)
 
 gener = pipeline("text-generation", model=model, tokenizer=tokenizer, return_full_text=False, do_sample=True, temperature=0.6, top_p=0.9, max_new_tokens=300)
 
@@ -49,7 +47,7 @@ for uid in ids[1:]:
 
     prompts = [{"role":"system", "content": f'{instruction}'}, {'role':'user', 'content': f'Article: {article}. Content: {content} PII List: {pii}'}]
    
-    output = gener(prompts, truncation=True, max_length=300)
+    output = gener(prompts, truncation=True)
     print(output[0]['generated_text'])
     input()
     del output
