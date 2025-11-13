@@ -3,7 +3,7 @@ from transformers import AutoTokenizer, AutoModelForCausalLM, pipeline
 from PanoHandler import Panorama, PanoPlus
 import torch
 
-MODEL ='Meta-Llama-3.1-70B-Instruct.Q4_K_M.gguf'
+MODEL ="meta-llama/Llama-3.1-8B-Instruct"
 
 #Accessing prompt
 current_directory = Path(__file__).parent
@@ -16,6 +16,8 @@ with open(prompt_gen_prompt, 'r', encoding='utf-8') as f:
 model = AutoModelForCausalLM.from_pretrained(MODEL, dtype=torch.bfloat16, device_map='auto', low_cpu_mem_usage=True)
 
 tokenizer = AutoTokenizer.from_pretrained(MODEL)
+device = torch.device("cuda")
+model.to(device)
 
 gener = pipeline("text-generation", model=model, tokenizer=tokenizer, return_full_text=False, do_sample=True, temperature=0.6, top_p=0.9, max_new_tokens=300)
 
