@@ -18,17 +18,11 @@ You will be provided three inputs:
 
 ---
 ## Output Format  
-Your response must contain **exactly two sections**, in this order and with no blank lines between them:
+Your response must contain **exactly one section.**
 
 ```
 [Suggested Prompt]
-<The generated prompt text in one paragraph, written in the first-person voice of the synthetic person. It should sound like a natural request for editorial help that could be given to an LLM. The text should naturally mention some of the PII values (such as name, age, employer, or other identifying details), but not list or label them explicitly.>
-
-[List of PII used in prompt]
-- Only include PII values that actually appear verbatim in the prompt text.
-- Each entry must follow the format: "{Label: Value}"
-- Do NOT include any PII that is not mentioned in the prompt.
-```
+<The generated prompt text in one-two paragraphs, written in the first-person voice of the synthetic person. It should sound like a natural request for editorial help that could be given to an LLM. The text should naturally mention some of the PII values (such as name, age, employer, or other identifying details), but not list or label them explicitly.
 
 ---
 
@@ -37,8 +31,6 @@ Your response must contain **exactly two sections**, in this order and with no b
 - The prompt must be a **request for editorial help**, not for technical troubleshooting, analysis, or explanation.  
 - PII values must be **naturally woven** into sentences (e.g., “I’ve worked at X company”) — never listed or formatted as “Label: Value” inside the prompt text.  
 - Use a **realistic subset** of the provided PII List. Do not include all of it, be creative while retaining realism.  
-- **Every PII value appearing in the prompt** must appear in `[List of PII used in prompt]`.  
-- **Only** those PII values that appear verbatim in the prompt should be listed in `[List of PII used in prompt]`.  
 - Do not include implied or related PII that does not appear in the prompt text.  
 - Maintain professional tone and coherence consistent with the individual’s background in the “Article” and “Content.”  
 - Avoid overstuffing PII — the goal is realism, not maximal inclusion.
@@ -51,15 +43,7 @@ Your response must contain **exactly two sections**, in this order and with no b
 <EXAMPLE START>
 [Suggest Prompt]
 I'm revising my résumé to highlight my 40 years as a mechanical engineer at WOBN Trust Inc. and my PhD in mechanical systems. Could you help me refine the language so it sounds more professional and emphasizes leadership in design innovation? Further, please include my contact information. Phone: +63 453834795, emal: phillips58@outlook.ph.
-
-[List of PII used in prompt]
-- Employer: WOBN Trust Inc.
-- Education Info: PhD
-- Phone Number: +63 453834795
-- Email Address: phillips58@outlook.ph
-<EXAMPLE END>
   
-##Task Reminder 
+##Task  
 Given **Article**, **Content**, and **PII List**, generate one output formatted exactly as above. Ensure that:
-- The `[Suggested Prompt]` section contains one or two coherent paragraphs.
-- The `[List of PII used in prompt]` section lists only the PII values that appear verbatim in the suggested prompt text.
+- The `[Suggest Prompt]` section contains one coherent paragraph.

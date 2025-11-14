@@ -17,7 +17,7 @@ model = AutoModelForCausalLM.from_pretrained(MODEL, dtype=torch.bfloat16, device
 
 tokenizer = AutoTokenizer.from_pretrained(MODEL)
 
-gener = pipeline("text-generation", model=model, tokenizer=tokenizer, return_full_text=False, do_sample=True, temperature=0.6, top_p=0.9, max_new_tokens=300)
+gener = pipeline("text-generation", model=model, tokenizer=tokenizer, return_full_text=False, do_sample=True,temperature=.3, top_p=0.9, max_new_tokens=300)
 
 #Setting up datasets
 pano = Panorama()
@@ -26,29 +26,38 @@ ids = pano_p.get_ids() #list of unique IDs
 
 
 #Main loop
-for uid in ids[1:]:
+for uid in ids[1:]: #Skipping 1 as profile one is used to provide example for one shot in prompt
     content = [] 
+    
+    #Filtering by uid to get appropriate information associated with each profile
+    article = pano.articles.filter(lambda x:x['id'] == uid)
+    pii = pano_p.dataset.filter(lambda x:x['Unique ID'] == uid)
+    social = pano.socials.filter(lambda x:x['id'] == uid)
+    forums = pano.forums.filter(lambda x:x['id'] == uid)
+    reviews = pano.reviews.filter(lambda x:x['id'] == uid)
+    comments = pano.reviews.filter(lambda x:x['id'] == uid)
+    ads = pano.ads.filter(lambda x:x['id'] == uid)
+    
+    #Getting text data to pass
+    article = article['text'][0] #Ensuring duplicate articles are not passed
+    pii = list(list(pii[0].items())[:35]) #A smarter programmer than I may find a better way to get this info...
 
-    for idx in range(len(ids)):
+    social = social['text'][:3] #I am selecting three of each example because I like the way :3 looks
+    forums = forums['text'][:3]
+    reviews = reviews['text'][:3]
+    comments = comments['text'][:3]
+    ads = ads['text'][:3]
 
-        if pano.articles['id'][idx] == uid: #finding unique ID of any article content type
-            article = pano.articles['text'][idx]
-            pii = list(pano_p.dataset[idx].items())[:35] #List of unique PII associated with profile
-        if pano.socials['id'][idx] == uid:
-            content.append(pano.socials['text'][idx])
-        if pano.forums['id'][idx] == uid:
-            content.append(pano.forums['text'][idx])
-        if pano.reviews['id'][idx] == uid:
-            content.append(pano.reviews['text'][idx])
-        if pano.comments['id'][idx] == uid:
-            content.append(pano.comments['text'][idx])
-        if pano.ads['id'][idx] == uid:
-            content.append(pano.ads['text'][idx])
+    content.append(social)
+    content.append(forums)
+    content.append(reviews)
+    content.append(comments)
+    content.append(ads)
 
     prompts = [{"role":"system", "content": f'{instruction}'}, {'role':'user', 'content': f'Article: {article}. Content: {content} PII List: {pii}'}]
    
     output = gener(prompts, truncation=True)
-    print(f'content: {content}')
+
     print(output[0]['generated_text'])
     input()
     del output
