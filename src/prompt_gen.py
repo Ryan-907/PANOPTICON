@@ -7,7 +7,7 @@ MODEL ="meta-llama/Llama-3.1-8B-Instruct"
 
 #Accessing prompt
 current_directory = Path(__file__).parent
-prompt_gen_prompt = current_directory.parent / 'prompts' / 'gen_editorial_prompt.md'
+prompt_gen_prompt = current_directory.parent / 'prompts' / 'experimental.md'
 
 with open(prompt_gen_prompt, 'r', encoding='utf-8') as f:
     instruction = f.read()
@@ -48,6 +48,7 @@ for uid in ids[1:]:
     prompts = [{"role":"system", "content": f'{instruction}'}, {'role':'user', 'content': f'Article: {article}. Content: {content} PII List: {pii}'}]
    
     output = gener(prompts, truncation=True)
+    print(f'content: {content}')
     print(output[0]['generated_text'])
     input()
     del output
