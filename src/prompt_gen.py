@@ -67,7 +67,7 @@ for uid in ids[1:]: #Skipping 1 as profile one is used to provide example for on
     content.append(comments)
     content.append(ads)
 
-    prompts = [{"role":"system", "content": f'{instruction}'}, {'role':'user', 'content': f'Article: {article}. PII List: {pii}'}]
+    prompts = [{"role":"system", "content": f'{instruction}'}, {'role':'user', 'content': f'Article: {article} PII List: {pii}.'}]
    
     output = gener(prompts, truncation=True)
 
