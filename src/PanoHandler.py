@@ -2,6 +2,8 @@ import datasets
 from dataclasses import dataclass, field
 from typing import List
 import random
+import re
+
 '''
 Dealing with the following datasets:
 
@@ -137,6 +139,22 @@ class PanoPlus:
     def rand_features(self, features):
         num_features = random.randint(2,5)
         return random.sample(features, num_features)
+
+
+def match_pii(prompt:str, pii_values: dict):
+    tokens = re.findall(r'\w+|[^\w\s]', prompt)
+    remove = ['.','!',',','?']
+
+    filtered_prompt = [t for t in tokens if t not in remove]
+
+
+    for word in filtered_prompt:
+        if word in pii_values.values():
+            pii = {k: v for k,v in pii_values.items() if v == word}
+    
+    return pii
+
+
 
 
 
