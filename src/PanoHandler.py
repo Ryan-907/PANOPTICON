@@ -103,15 +103,15 @@ class PanoPlus:
                                                         'Emergency Contact Phone', 'complete_info'])
     
     ResumeFeatures: list[str] = field(default_factory=lambda: ['Locale', 'First Name', 'Last Name', 'Gender', 'Age', 
-                                                              'Nationality', 'Marital Status', 'National ID', "Driver's License", 
-                                                              'Work Phone', 'Address', 'Work Email', 'Birth Date', 'Education Info', 
-                                                              'Finance Status', 'Net Worth', 'Employer', 'Job Title', 'Annual Salary', 
-                                                              'Social Media Handles'])
+                                                              'Nationality', 'Marital Status', 'National ID',  
+                                                              'Work Phone', 'Address', 'Work Email', 'Birth Date', 'Education Info', 'Employer', 
+                                                              'Job Title', 'Annual Salary', 'Social Media Handles'])
 
     HealthFeatures: list[str] = field(default_factory=lambda: ['Locale', 'First Name', 'Last Name', 'Gender', 'Age', 'Nationality', 
                                                               'Marital Status', 'Spouse Name', 'National ID', 'Phone Number', 'Address', 
                                                               'Email Address', 'Birth Date', 'Blood Type', 'Allergies', 'Disability', 
                                                               'Emergency Contact Name', 'Emergency Contact Phone'])
+
     TravelFeatures: list[str] = field(default_factory=lambda: ['Locale', 'First Name', 'Last Name', 'Nationality', 'National ID', 
                                                               'Passport Number', 'Address', 'Email Address', 'Finance Status', 
                                                               'Net Worth', 'Annual Salary', 'Social Media Handles'])
