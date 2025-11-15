@@ -1,7 +1,7 @@
 import datasets
-from transformers import AutoTokenizer
 from dataclasses import dataclass, field
 from typing import List
+import random
 '''
 Dealing with the following datasets:
 
@@ -44,8 +44,6 @@ Example entry
 
 '''
 
-tokenizer = AutoTokenizer.from_pretrained('bert-base-uncased')
-
 @dataclass
 class Panorama:
     name: str = 'srirxml/PANORAMA'
@@ -55,7 +53,6 @@ class Panorama:
     num_rows: int = 384_794 
     conf_name: str = 'default' 
     dataset: object = field(init=False)
-    tokenizer: object = field(init=False)
     articles: list[dict] = field(init=False)
     socials: list[dict] = field(init=False)
     forums: list[dict] = field(init=False)
@@ -88,45 +85,94 @@ class Entry:
         self.text = self.dataset[self.idx]['text']
 
 
-def tokenization(entry):
-    return tokenizer(entry['text'], truncation=True)
-
 
 @dataclass
 class PanoPlus:
     name: str = 'srirxml/PANORAMA-Plus'
-    features: list[str] = field(default_factory=lambda: ['Unique ID', 'Locale', 'First Name', 'Last Name', "Father's Name", "Mother's Name", 'Gender', 'Age', 'Nationality', 'Marital Status', 'Spouse Name', 'Children Count', 'National ID', 'Passport Number', "Driver's License", 'Phone Number', 'Work Phone', 'Address', 'Email Address', 'Work Email', 'Birth Date', 'Birth City', 'Education Info', 'Finance Status', 'Net Worth', 'Employer', 'Job Title', 'Annual Salary', 'Credit Score', 'Social Media Handles', 'Blood Type', 'Allergies', 'Disability', 'Emergency Contact Name', 'Emergency Contact Phone', 'complete_info'])
+
+    features: list[str] = field(default_factory=lambda: ['Unique ID', 'Locale', 'First Name', 'Last Name', 
+                                                        "Father's Name", "Mother's Name", 'Gender', 'Age', 
+                                                        'Nationality', 'Marital Status', 'Spouse Name', 
+                                                        'Children Count', 'National ID', 'Passport Number', 
+                                                        "Driver's License", 'Phone Number', 'Work Phone', 
+                                                        'Address', 'Email Address', 'Work Email', 'Birth Date', 
+                                                        'Birth City', 'Education Info', 'Finance Status', 
+                                                        'Net Worth', 'Employer', 'Job Title', 'Annual Salary', 
+                                                        'Credit Score', 'Social Media Handles', 'Blood Type', 
+                                                        'Allergies', 'Disability', 'Emergency Contact Name', 
+                                                        'Emergency Contact Phone', 'complete_info'])
+    
+    ResumeFeatures: list[str] = field(default_factory=lambda: ['Locale', 'First Name', 'Last Name', 'Gender', 'Age', 
+                                                              'Nationality', 'Marital Status', 'National ID', "Driver's License", 
+                                                              'Work Phone', 'Address', 'Work Email', 'Birth Date', 'Education Info', 
+                                                              'Finance Status', 'Net Worth', 'Employer', 'Job Title', 'Annual Salary', 
+                                                              'Social Media Handles'])
+
+    HealthFeatures: list[str] = field(default_factory=lambda: ['Locale', 'First Name', 'Last Name', 'Gender', 'Age', 'Nationality', 
+                                                              'Marital Status', 'Spouse Name', 'National ID', 'Phone Number', 'Address', 
+                                                              'Email Address', 'Birth Date', 'Blood Type', 'Allergies', 'Disability', 
+                                                              'Emergency Contact Name', 'Emergency Contact Phone'])
+    TravelFeatures: list[str] = field(default_factory=lambda: ['Locale', 'First Name', 'Last Name', 'Nationality', 'National ID', 
+                                                              'Passport Number', 'Address', 'Email Address', 'Finance Status', 
+                                                              'Net Worth', 'Annual Salary', 'Social Media Handles'])
+    
+    DocFeatures: list[str] = field(default_factory=lambda: ['First Name', 'Last Name', "Father's Name", "Mother's Name", 'Gender', 'Age', 
+                                                            'Nationality', 'Marital Status', 'Spouse Name', 'Children Count', 
+                                                            'National ID', "Driver's License", 'Phone Number', 'Address', 'Email Address', 
+                                                            'Birth Date', 'Birth City', 'Education Info', 'Finance Status', 'Net Worth', 
+                                                            'Employer', 'Job Title', 'Annual Salary', 'Credit Score', 'Disability', 
+                                                            'Emergency Contact Name', 'Emergency Contact Phone'])
+    
     split: str = 'train'
     num_rows: int = 9_674
     conf_name: str = 'default'
     dataset: object = field(init=False)
-    tokenizer: object = AutoTokenizer.from_pretrained('bert-base-uncased')
 
     def __post_init__(self):
         self.dataset = datasets.load_dataset(self.name, self.conf_name, split = self.split)
 
     def get_ids(self):
         return self.dataset['Unique ID']
+    
+    def rand_features(self, features):
+        num_features = random.randint(2,5)
+        return random.sample(features, num_features)
+
+
 
 
 if __name__=='__main__':
-    #Panorama sets
+    #Panorama 
     pano = Panorama()
 
-    #Panorama plus sets
+    #Panorama+
     pano_p = PanoPlus()
     ids = pano_p.get_ids()
 
-    profiles = {}
 
-
+    #Main loop, gets unique profiles from the datasets
     for uid in ids:
-        for idx in range(len(ids)):
-            if pano.articles['id'][idx] == uid:
-                print("------------------------------------")
-                print(f'{idx}\n{uid}')
-                print("------------------------------------")
-                print(pano.articles['content-type'][idx])
-                print(pano.articles['text'][idx])
-                print('------------------------------------')
-            
+        
+        #Filtering PII by unique id, ensuring only 1 row is derived
+        full_pii = pano_p.dataset.filter(lambda x:x['Unique ID'] == uid)[0]
+
+        #Randomly selecting PII features to use, getting key value pairs
+        features = pano_p.rand_features(pano_p.ResumeFeatures)
+        pii = {k: full_pii[k] for k in features}
+
+        #Removing null PII
+        pii = {k: pii[k] for k in pii if pii[k]!='{}' and pii[k]!= 'N/A'}
+        
+        #Handles edge case of no PII in dict
+        if not pii:
+            features = ['First Name', 'Last Name']
+            pii = {k: full_pii[k] for k in features}
+
+        #Filters for unique profile texts
+        article = pano.articles.filter(lambda x:x['id'] == uid)
+        social = pano.socials.filter(lambda x:x['id'] == uid)
+        forums = pano.forums.filter(lambda x:x['id'] == uid)
+        reviews = pano.reviews.filter(lambda x:x['id'] == uid)
+        comments = pano.reviews.filter(lambda x:x['id'] == uid)
+        ads = pano.ads.filter(lambda x:x['id'] == uid)
+                
