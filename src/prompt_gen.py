@@ -39,31 +39,27 @@ for uid in ids[1:]: #Skipping 1 as profile one is used to provide example for on
     
     #Getting text data to pass
     article = article['text'][0] #Ensuring duplicate articles are not passed
+
+    #Getting relevat PII
     full_pii = pano_p.dataset.filter(lambda x:x['Unique ID'] == uid)[0] #Ensuring duplicate PII is not passed
     pii = list(full_pii.items())[:35]
-    print(pii)
 
 
-    social = social['text'][:3] #I am selecting three of each example because I like the way :3 looks
-    forums = forums['text'][:3]
-    reviews = reviews['text'][:3]
-    comments = comments['text'][:3]
-    ads = ads['text'][:3]
-
-    content.append(social)
-    content.append(forums)
-    content.append(reviews)
-    content.append(comments)
-    content.append(ads)
+    content.append(social['text'][:3]) #I am selecting three of each example because I like the way :3 looks
+    content.appen(forums['text'][:3])
+    content.appen(reviews['text'][:3])
+    content.append(comments['text'][:3])
+    content.append(ads['text'][:3])
 
     prompts = [{"role":"system", "content": f'{instruction}'}, {'role':'user', 'content': f'Article: {article} PII List: {pii}.'}]
    
     output = gener(prompts, truncation=True)
+    output = output[0]['generated_text']
 
-    print(output[0]['generated_text'])
+    print(output)
 
-    pii = match_pii(output[0]['generated_text'], full_pii)
-    print(pii)
+    pii = match_pii(output, full_pii)
+
     input()
 
     del output
