@@ -142,16 +142,16 @@ class PanoPlus:
 
 
 def match_pii(prompt:str, pii_values: dict):
-    tokens = re.findall(r'\w+|[^\w\s]', prompt)
-    remove = ['.','!',',','?']
+    pii = {}
+    tokens = re.findall(r"[A-Za-z0-9]+(?:['-/][A-Za-z0-9]+)*|[^\w\s]", prompt)
+    pii_values = {k:v.lower() for k, v in pii_values.items()}
+    tokens = [t.lower() for t in tokens]
 
-    filtered_prompt = [t for t in tokens if t not in remove]
 
+    for k,v in pii_values.items():
+        if v in tokens:
+            pii[k] = v
 
-    for word in filtered_prompt:
-        if word in pii_values.values():
-            pii = {k: v for k,v in pii_values.items() if v == word}
-    
     return pii
 
 
