@@ -7,9 +7,9 @@ MODEL ="meta-llama/Llama-3.1-8B-Instruct"
 
 #Accessing prompt
 current_directory = Path(__file__).parent
-prompt_gen_prompt = current_directory.parent / 'prompts' / 'experimental.md'
+system_prompt = current_directory.parent / 'prompts' / 'experimental.md'
 
-with open(prompt_gen_prompt, 'r', encoding='utf-8') as f:
+with open(system_prompt, 'r', encoding='utf-8') as f:
     instruction = f.read()
 
 #setting up model and generation
@@ -17,7 +17,7 @@ model = AutoModelForCausalLM.from_pretrained(MODEL, dtype=torch.bfloat16, device
 
 tokenizer = AutoTokenizer.from_pretrained(MODEL)
 
-gener = pipeline("text-generation", model=model, tokenizer=tokenizer, return_full_text=False, do_sample=True,temperature=.3, top_p=0.9, max_new_tokens=300)
+generator = pipeline("text-generation", model=model, tokenizer=tokenizer, return_full_text=False, do_sample=True,temperature=.3, top_p=0.9, max_new_tokens=400)
 
 #Setting up datasets
 pano = Panorama()
@@ -46,20 +46,20 @@ for uid in ids[1:]: #Skipping 1 as profile one is used to provide example for on
 
 
     content.append(social['text'][:3]) #I am selecting three of each example because I like the way :3 looks
-    content.appen(forums['text'][:3])
-    content.appen(reviews['text'][:3])
+    content.append(forums['text'][:3])
+    content.append(reviews['text'][:3])
     content.append(comments['text'][:3])
     content.append(ads['text'][:3])
 
     prompts = [{"role":"system", "content": f'{instruction}'}, {'role':'user', 'content': f'Article: {article} PII List: {pii}.'}]
    
-    output = gener(prompts, truncation=True)
+    output = generator(prompts, truncation=True)
     output = output[0]['generated_text']
 
     print(output)
 
     pii = match_pii(output, full_pii)
-
+    print(pii)
     input()
 
     del output
