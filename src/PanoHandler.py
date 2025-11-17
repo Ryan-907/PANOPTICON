@@ -6,8 +6,15 @@ import re
 
 pattern = re.compile(
     r"\(\d{3}\)\s?\d{3}[- ]\d{4}"                                  
-    r"|[A-Za-z0-9'\/\-,@$+]+(?:\.(?!\s)[A-Za-z0-9'\/\-,@$+]+)*"       
-    r"|[^\w\s'\/\-,@$+]"                                            
+    r"|[A-Za-z0-9'\/\-@$+]+(?:\.(?!\s)[A-Za-z0-9'\/\-@$+]+)*"       
+    r"|[^\w\s'\/\-@$+]"                                            
+)
+
+pattern2 = re.compile (
+    r"\d+\s+"                           
+    r"[A-Za-z0-9'\/\-@$+ ]+,\s*"        
+    r"[A-Za-z0-9'\/\-@$+ ]+,\s*"        
+    r"[A-Z]{2}\s+[A-Z]\d[A-Z]\d[A-Z]\d" 
 )
 
 '''
@@ -127,23 +134,25 @@ class PanoPlus:
         return random.sample(features, num_features)
 
 
-def match_pii(prompt:str, pii_values: dict):
-    pii = {}
-    count = 0
-    prompt = re.findall(pattern, prompt)
- 
+def match_pii(og_prompt:str, pii_values: dict):
+    pii = {} 
     for k,v in pii_values.items():
-        v = re.findall(pattern, v)
+        if k == 'Address':
+            v = re.findall(pattern2, v)
+            prompt = re.findall(pattern2, og_prompt)
+
+        elif k == 'complete_info':
+            break
+
+        else:
+           v = re.findall(pattern, v)
+           prompt = re.findall(pattern, og_prompt)
 
         for i in v:
             for p in prompt:
 
                 if i.lower() == p.lower():
                     pii[k] = i
-        count+=1
-
-        if count == 35:
-            break
 
     return pii
 
@@ -186,7 +195,7 @@ if __name__=='__main__':
 
         pii = {k: full_pii[k] for k in full_pii}
         print('Matcing pii...')
-        v = match_pii("Derek", full_pii)
+        v = match_pii("3088 Jonathan Plaza, South Madeline, NU R9R3X7 I'm reaching out for some editorial assistance with my résumé, as I'm looking to make a strong impression on potential employers. With my background in customer service as a waiter/waitress at White-Williams, I'm confident in my ability to provide excellent service, but I'd like to highlight my transferable skills in a way that showcases my value as a candidate. I've worked hard to balance my responsibilities, including managing a modest financial status and a low net worth, while still pursuing my passion for personal growth and development. I'd appreciate any suggestions on how to effectively communicate my experiences and qualifications in a way that resonates with hiring managers.", full_pii)
         print(v)
         print('Did it work?')
         input()
