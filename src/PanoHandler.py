@@ -2,6 +2,13 @@ import datasets
 from dataclasses import dataclass, field
 from typing import List
 import random
+import re
+
+pattern = re.compile(
+    r"\(\d{3}\)\s?\d{3}[- ]\d{4}"                                  
+    r"|[A-Za-z0-9'\/\-,@$+]+(?:\.(?!\s)[A-Za-z0-9'\/\-,@$+]+)*"       
+    r"|[^\w\s'\/\-,@$+]"                                            
+)
 
 '''
 Dealing with the following datasets:
@@ -103,26 +110,6 @@ class PanoPlus:
                                                         'Allergies', 'Disability', 'Emergency Contact Name', 
                                                         'Emergency Contact Phone', 'complete_info'])
     
-    ResumeFeatures: list[str] = field(default_factory=lambda: ['Locale', 'First Name', 'Last Name', 'Gender', 'Age', 
-                                                              'Nationality', 'Marital Status', 'National ID',  
-                                                              'Work Phone', 'Address', 'Work Email', 'Birth Date', 'Education Info', 'Employer', 
-                                                              'Job Title', 'Annual Salary', 'Social Media Handles'])
-
-    HealthFeatures: list[str] = field(default_factory=lambda: ['Locale', 'First Name', 'Last Name', 'Gender', 'Age', 'Nationality', 
-                                                              'Marital Status', 'Spouse Name', 'National ID', 'Phone Number', 'Address', 
-                                                              'Email Address', 'Birth Date', 'Blood Type', 'Allergies', 'Disability', 
-                                                              'Emergency Contact Name', 'Emergency Contact Phone'])
-
-    TravelFeatures: list[str] = field(default_factory=lambda: ['Locale', 'First Name', 'Last Name', 'Nationality', 'National ID', 
-                                                              'Passport Number', 'Address', 'Email Address', 'Finance Status', 
-                                                              'Net Worth', 'Annual Salary', 'Social Media Handles'])
-    
-    DocFeatures: list[str] = field(default_factory=lambda: ['First Name', 'Last Name', "Father's Name", "Mother's Name", 'Gender', 'Age', 
-                                                            'Nationality', 'Marital Status', 'Spouse Name', 'Children Count', 
-                                                            'National ID', "Driver's License", 'Phone Number', 'Address', 'Email Address', 
-                                                            'Birth Date', 'Birth City', 'Education Info', 'Finance Status', 'Net Worth', 
-                                                            'Employer', 'Job Title', 'Annual Salary', 'Credit Score', 'Disability', 
-                                                            'Emergency Contact Name', 'Emergency Contact Phone'])
     
     split: str = 'train'
     num_rows: int = 9_674
@@ -142,10 +129,21 @@ class PanoPlus:
 
 def match_pii(prompt:str, pii_values: dict):
     pii = {}
-    
+    count = 0
+    prompt = re.findall(pattern, prompt)
+ 
     for k,v in pii_values.items():
-        if v in prompt or v.lower() in prompt:
-            pii[k] = v
+        v = re.findall(pattern, v)
+
+        for i in v:
+            for p in prompt:
+
+                if i.lower() == p.lower():
+                    pii[k] = i
+        count+=1
+
+        if count == 35:
+            break
 
     return pii
 
@@ -155,6 +153,23 @@ def match_pii(prompt:str, pii_values: dict):
 
 
 if __name__=='__main__':
+
+    pii_list = [ ("Unique ID", "8e2d63bb-6635-42a3-89a9-2f49e2069f7d"), ("Locale", "en_CA"), ("First Name", "Catherine"), 
+                ("Last Name", "Nielsen"), ("Father's Name", "Derek Sanders"), ("Mother's Name", 'Sheila Sanders'), 
+                ('Gender', 'Female'), ('Age', '31'), ('Nationality', 'Canadian'), ('Marital Status', 'Married'), 
+                ('Spouse Name', 'Kayla Nielsen'), ('Children Count', '1'), ('National ID', 'CA-ID-7000000'), 
+                ('Passport Number', '771575550'), ("Driver's License", 'CA-DL-859644744'), 
+                ('Phone Number', '(141) 344-0607 x513'), ('Work Phone', '(508) 849-0095 x056'), 
+                ('Address', '3088 Jonathan Plaza, South Madeline, NU R9R3X7'), 
+                ('Email Address', 'catherine_nielsen@outlook.com'), ('Work Email', 'c.nielsen@whitewilliams.com'), 
+                ('Birth Date', '1993-12-08'), ('Birth City', 'Jamesfort'), 
+                ('Education Info', "Bachelor's"), ('Finance Status', 'Low'), 
+                ('Net Worth', '$15372.07'), ('Employer', 'White-Williams'), ('Job Title', 'Waiter/Waitress'), 
+                ('Annual Salary', '$36286.22'), ('Credit Score', '508'), 
+                ('Social Media Handles', "{'Twitter': '@nielsenc'}"), ('Blood Type', 'A+'), 
+                ('Allergies', 'Seafood'), ('Disability', 'Visual'), ('Emergency Contact Name', 'Jeanne Schultz'), 
+                ('Emergency Contact Phone', '(623) 153-2962')]
+
     #Panorama 
     pano = Panorama()
 
@@ -164,28 +179,20 @@ if __name__=='__main__':
 
 
     #Main loop, gets unique profiles from the datasets
-    for uid in ids:
+    for uid in ids[1:]:
         
         #Filtering PII by unique id, ensuring only 1 row is derived
         full_pii = pano_p.dataset.filter(lambda x:x['Unique ID'] == uid)[0]
 
-        #Randomly selecting PII features to use, getting key value pairs
-        features = pano_p.rand_features(pano_p.ResumeFeatures)
-        pii = {k: full_pii[k] for k in features}
+        pii = {k: full_pii[k] for k in full_pii}
+        print('Matcing pii...')
+        v = match_pii("A+ $36286.22 @nielsenc c.nielsen@whitewilliams.com (623) 153-2962 I'm reaching out for some editorial assistance with my résumé, as I'm looking to make " \
+        "a strong impression on potential employers. As a Canadian citizen with a Bachelor's degree and a passion "
+        "for community values, I've been working as a waiter/waitress at White-Williams for the past few years. " \
+        "I've had to navigate some challenges, including a visual disability and managing dietary restrictions due " \
+        "to a seafood allergy, but I've found creative solutions to live life fully. I'm proud of my accomplishments, but I'd love some help highlighting them in a way that showcases my perseverance and steady ambition. Could you help me craft a compelling narrative that highlights my strengths and experiences, while also ensuring that my tone is professional and polished?", full_pii)
+        print(v)
+        print('Did it work?')
+        input()
 
-        #Removing null PII
-        pii = {k: pii[k] for k in pii if pii[k]!='{}' and pii[k]!= 'N/A'}
-        
-        #Handles edge case of no PII in dict
-        if not pii:
-            features = ['First Name', 'Last Name']
-            pii = {k: full_pii[k] for k in features}
-
-        #Filters for unique profile texts
-        article = pano.articles.filter(lambda x:x['id'] == uid)
-        social = pano.socials.filter(lambda x:x['id'] == uid)
-        forums = pano.forums.filter(lambda x:x['id'] == uid)
-        reviews = pano.reviews.filter(lambda x:x['id'] == uid)
-        comments = pano.reviews.filter(lambda x:x['id'] == uid)
-        ads = pano.ads.filter(lambda x:x['id'] == uid)
                 
