@@ -186,11 +186,7 @@ if __name__=='__main__':
 
         pii = {k: full_pii[k] for k in full_pii}
         print('Matcing pii...')
-        v = match_pii("A+ $36286.22 @nielsenc c.nielsen@whitewilliams.com (623) 153-2962 I'm reaching out for some editorial assistance with my résumé, as I'm looking to make " \
-        "a strong impression on potential employers. As a Canadian citizen with a Bachelor's degree and a passion "
-        "for community values, I've been working as a waiter/waitress at White-Williams for the past few years. " \
-        "I've had to navigate some challenges, including a visual disability and managing dietary restrictions due " \
-        "to a seafood allergy, but I've found creative solutions to live life fully. I'm proud of my accomplishments, but I'd love some help highlighting them in a way that showcases my perseverance and steady ambition. Could you help me craft a compelling narrative that highlights my strengths and experiences, while also ensuring that my tone is professional and polished?", full_pii)
+        v = match_pii("Derek", full_pii)
         print(v)
         print('Did it work?')
         input()
