@@ -22,7 +22,7 @@ Your response must contain **exactly one section.**
 
 ```
 [Suggested Prompt]
-<The generated prompt text in one paragraph, written in the first-person voice of the synthetic person. It should sound like a natural request for editorial help that could be given to an LLM. The text should naturally mention all of the PII provided, but not list or label them explicitly.
+<The generated prompt text in one paragraph, written in the first-person voice of the synthetic person. It should sound like a natural request for editorial help that could be given to an LLM. The text should naturally mention a logical portion of the PII provided, but not list or label them explicitly.
 ```
 
 ---
