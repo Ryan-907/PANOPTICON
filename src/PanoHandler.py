@@ -2,7 +2,6 @@ import datasets
 from dataclasses import dataclass, field
 from typing import List
 import random
-import re
 
 '''
 Dealing with the following datasets:
