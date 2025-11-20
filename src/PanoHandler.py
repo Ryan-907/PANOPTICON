@@ -6,6 +6,7 @@ import re
 from ast import literal_eval
 
 default_pattern = re.compile(r"[A-Za-z0-9'()_\/\\+-]+")
+address_pattern = re.compile(r"[A-Za-z0-9,']+")
 num_pattern = re.compile(r'[0-9$]+')
 child_map = {'1':'one','2':'two', '3':'three', '4':'four'}
 
@@ -133,9 +134,18 @@ def match_pii(og_prompt: str, pii_values: dict) -> dict:
     pii = {}
     for k,v in pii_values.items():
 
-        if k in ['Education Info', 'Phone Number', "Work Phone", "Emergency Contact Phone", "Address", "Email Address", "Work Email", "Employer"]:
+        if k in ['Education Info', 'Phone Number', "Work Phone", "Emergency Contact Phone", "Email Address", "Work Email", "Employer"]:
             if v in og_prompt:
                 pii[k] = v
+        
+        elif k in ['Address']:
+            val = ''
+            check = re.findall(address_pattern, v)
+            for i in check:
+                if i in og_prompt:
+                    val+=f'{i} '
+            val = val.rstrip()
+            pii[k]=val
 
         elif k in ["Annual Salary", "Net Worth"]:
             prompt = re.findall(num_pattern, og_prompt)
@@ -220,9 +230,8 @@ if __name__=='__main__':
         pii = {k: full_pii[k] for k in full_pii}
         print('Matcing pii...')
 
-        v = match_pii(og_prompt="As I approach my 68th birthday, I've been reflecting on my career as a mechanical engineer at WOBN Trust Inc. and the various challenges I've faced in my role. With a PhD in hand, I've always strived to bring a unique blend of technical expertise and creative problem-solving to the table, often navigating complex engineering challenges with precision and innovation. My experience working under financial constraints has taught me the value of pragmatism, and I've learned to approach each project with a clear-eyed focus on what's feasible and what's not. I'm proud of the work I've done, from designing and implementing new systems to mentoring junior engineers, and I'm eager to continue making meaningful contributions to the field. Now, I'm looking to update my résumé to better reflect my accomplishments and experience, and I'd love some help from a skilled editor to ensure it accurately showcases my skills and achievements.", pii_values=full_pii)
+        v = match_pii(og_prompt="Gemini Extension, Lambunao, 8501 Davao del Sur", pii_values=full_pii)
         print(v)
-
         input()
 
     print("Matcher works for exact matches more or less...")
