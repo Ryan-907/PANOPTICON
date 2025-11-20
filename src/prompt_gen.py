@@ -7,7 +7,7 @@ MODEL ="meta-llama/Llama-3.1-8B-Instruct"
 
 #Accessing prompt
 current_directory = Path(__file__).parent
-system_prompt = current_directory.parent / 'prompts' / 'gen_editorial_prompt.md'
+system_prompt = current_directory.parent / 'prompts' / 'experimental.md'
 
 with open(system_prompt, 'r', encoding='utf-8') as f:
     instruction = f.read()
