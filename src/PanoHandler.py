@@ -140,12 +140,16 @@ def match_pii(og_prompt: str, pii_values: dict) -> dict:
         
         elif k in ['Address']:
             val = ''
+            prompt = re.findall(address_pattern, og_prompt)
             check = re.findall(address_pattern, v)
             for i in check:
-                if i in og_prompt:
+                if i in prompt:
                     val+=f'{i} '
             val = val.rstrip()
-            pii[k]=val
+            if not val:
+                pass
+            else:
+                pii[k]=val
 
         elif k in ["Annual Salary", "Net Worth"]:
             prompt = re.findall(num_pattern, og_prompt)
@@ -230,7 +234,7 @@ if __name__=='__main__':
         pii = {k: full_pii[k] for k in full_pii}
         print('Matcing pii...')
 
-        v = match_pii(og_prompt="Gemini Extension, Lambunao, 8501 Davao del Sur", pii_values=full_pii)
+        v = match_pii(og_prompt=" Lambunao, Davao del Sur", pii_values=full_pii)
         print(v)
         input()
 
