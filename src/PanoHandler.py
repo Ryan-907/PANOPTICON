@@ -3,19 +3,10 @@ from dataclasses import dataclass, field
 from typing import List
 import random
 import re
+from ast import literal_eval
 
-pattern = re.compile(
-    r"\(\d{3}\)\s?\d{3}[- ]\d{4}"                                  
-    r"|[A-Za-z0-9'\/\-@$+]+(?:\.(?!\s)[A-Za-z0-9'\/\-@$+]+)*"       
-    r"|[^\w\s'\/\-@$+]"                                            
-)
+default_pattern = re.compile(r"[A-Za-z0-9'()_\/\\+-]+")
 
-pattern2 = re.compile (
-    r"\d+\s+"                           
-    r"[A-Za-z0-9'\/\-@$+ ]+,\s*"        
-    r"[A-Za-z0-9'\/\-@$+ ]+,\s*"        
-    r"[A-Z]{2}\s+[A-Z]\d[A-Z]\d[A-Z]\d" 
-)
 
 '''
 Dealing with the following datasets:
@@ -57,6 +48,8 @@ Example entry
     rows: 9674
     configs: ['default']
 
+    'en_US', 'en_GB', 'en_CA', 'en_AU', 'en_NZ', 
+    'en_IE', 'en_IN', 'en_PH'
 '''
 
 @dataclass
@@ -134,31 +127,49 @@ class PanoPlus:
         return random.sample(features, num_features)
 
 
-def match_pii(og_prompt:str, pii_values: dict):
-    pii = {} 
+def match_pii(og_prompt: str, pii_values: dict) -> dict:
+    pii = {}
     for k,v in pii_values.items():
-        if k == 'Address':
-            v = re.findall(pattern2, v)
-            prompt = re.findall(pattern2, og_prompt)
 
-        elif k == 'complete_info':
-            break
-
+        if k in ['Education Info', 'Phone Number', "Work Phone", "Emergency Contact Phone", "Address", "Email Address", "Work Email","Annual Salary", "Net Worth", "Employer"]:
+            if v in og_prompt:
+                pii[k] = v
+        elif k in ['Social Media Handles']:
+            if pii_values[k] == '{}':
+                pass
+            else:
+                entry = ''
+                handles =literal_eval(v)
+                for sk, h in handles.items():
+                    if h in og_prompt:
+                        key = str(sk)
+                        value = str(h)
+                        entry += f"'{key}': '{value}', "
+                        print(entry)
+                entry = list(entry)
+                print(entry)
+                entry.pop(-1)
+                entry.pop(-1)
+                entry = ''.join(entry)
+                entry = "{"+entry+"}"
+                pii[k]=entry
         else:
-           v = re.findall(pattern, v)
-           prompt = re.findall(pattern, og_prompt)
-
-        for i in v:
-            for p in prompt:
-
-                if i.lower() == p.lower():
-                    pii[k] = i
-
+            prompt = re.findall(default_pattern, og_prompt) #Generally handles first and last names while leaving possibilty to only capture first or last names
+            s = v.split()
+            if len(s) > 1:
+                if s[0] in prompt and s[1] in prompt:
+                    pii[k] = v
+                elif s[0] in prompt:
+                    pii[k] = s[0]
+                elif s[1] in prompt:
+                    pii[k] = s[1]
+                else:
+                    continue
+            else:
+                if v in prompt or v.lower() in prompt:
+                    pii[k]= v
+ 
     return pii
-
-
-
-
 
 
 if __name__=='__main__':
@@ -178,6 +189,12 @@ if __name__=='__main__':
                 ('Social Media Handles', "{'Twitter': '@nielsenc'}"), ('Blood Type', 'A+'), 
                 ('Allergies', 'Seafood'), ('Disability', 'Visual'), ('Emergency Contact Name', 'Jeanne Schultz'), 
                 ('Emergency Contact Phone', '(623) 153-2962')]
+    prompt = 'I am Catherine Nielsen (en_CA). My father, Derek Sanders, and my mother, Sheila Sanders. I am a female, aged 31 and a Canadian. Furher, I am married to Kayla Nielsen. We have 1 child. I can prove my Canadian identity with' \
+    'my national ID CA-ID-7000000, my passport of 771575550 and my drivers license: CA-DL-859644744. You can contact me at (141) 344-0607 x513' \
+    'or my work (508) 849 x056. I can be found at 3088 Jonathan Plaza, South Madeline, NU R9R3X7 catherine_nielsen@outlook.com' \
+    'or c.nielsen@whitewilliams.com. I was born 1993-12-08 in Jamesfort. While I have a Bachelor\'s my finacnial status is low with a network of' \
+    'only $15372.07. It is due to my employer White-Williams, where I work as a waitress. I only make $36286.22 a year and my credit score is only 508! I suffer from a seafood allergy ad a visual disablity!' \
+    'My blood type is A+ and my emergency contact is Jeanne Schultz who can be found at (623) 153-2962, oh and my twitter is ... '
 
     #Panorama 
     pano = Panorama()
@@ -192,12 +209,16 @@ if __name__=='__main__':
         
         #Filtering PII by unique id, ensuring only 1 row is derived
         full_pii = pano_p.dataset.filter(lambda x:x['Unique ID'] == uid)[0]
+        print(list(full_pii.items())[:35])
 
         pii = {k: full_pii[k] for k in full_pii}
         print('Matcing pii...')
-        v = match_pii("3088 Jonathan Plaza, South Madeline, NU R9R3X7 I'm reaching out for some editorial assistance with my résumé, as I'm looking to make a strong impression on potential employers. With my background in customer service as a waiter/waitress at White-Williams, I'm confident in my ability to provide excellent service, but I'd like to highlight my transferable skills in a way that showcases my value as a candidate. I've worked hard to balance my responsibilities, including managing a modest financial status and a low net worth, while still pursuing my passion for personal growth and development. I'd appreciate any suggestions on how to effectively communicate my experiences and qualifications in a way that resonates with hiring managers.", full_pii)
+        v = match_pii(prompt, full_pii)
         print(v)
-        print('Did it work?')
         input()
+        print(list(v.items()))
+        assert(list(v.items()) == list(full_pii.items())[:35])
+        #print(full_pii)
+    print("Matcher works for exact matches more or less...")
 
                 
