@@ -173,7 +173,7 @@ def match_pii(og_prompt: str, pii_values: dict) -> dict:
 
         elif k in ['Children Count']:
 
-            if v == 0:
+            if v == '0':
                 pass
 
             elif 'child' in prompt:

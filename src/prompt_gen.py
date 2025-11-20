@@ -28,7 +28,8 @@ ids = pano_p.get_ids() #list of unique IDs
 
 #Main loop
 for uid in ids: #Skipping 1 as profile one is used to provide example for one shot in prompt
-    content = [] 
+    data = []
+    content = []
 
     #Filtering by uid to get appropriate information associated with each profile
 
@@ -40,12 +41,16 @@ for uid in ids: #Skipping 1 as profile one is used to provide example for one sh
     comments = pano.reviews.filter(lambda x:x['id'] == uid)
     ads = pano.ads.filter(lambda x:x['id'] == uid)
 
-    content.append(social['text'])
-    content.append(forums['text'])
-    content.append(reviews['text'])
-    content.append(comments['text'])
-    content.append(ads['text'])
-    
+    data.append(social['text'])
+    data.append(forums['text'])
+    data.append(reviews['text'])
+    data.append(comments['text'])
+    data.append(ads['text'])
+
+    for d in data:
+        for post in d:
+            content.append(d)
+
     content = sample(content, 10)
 
 
