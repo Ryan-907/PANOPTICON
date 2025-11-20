@@ -8,6 +8,8 @@ from ast import literal_eval
 default_pattern = re.compile(r"[A-Za-z0-9'()_\/\\+-]+")
 age_pattern = re.compile(r'[0-9]+')
 
+child_map = {'one':1,'two':2, 'three':3, 'four':4}
+
 
 '''
 Dealing with the following datasets:
@@ -160,6 +162,10 @@ def match_pii(og_prompt: str, pii_values: dict) -> dict:
             prompt = re.findall(age_pattern, og_prompt)
             if v in prompt:
                 pii[k]=v
+        elif k in ['Children Count']:
+            if child_map[v] in prompt:
+                pii[k]=v
+            
       
         else:
             prompt = re.findall(default_pattern, og_prompt) #Generally handles first and last names while leaving possibilty to only capture first or last names
