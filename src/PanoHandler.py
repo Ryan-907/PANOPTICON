@@ -7,7 +7,7 @@ from ast import literal_eval
 
 default_pattern = re.compile(r"[A-Za-z0-9'()_\/\\+-]+")
 address_pattern = re.compile(r"[A-Za-z0-9,']+")
-num_pattern = re.compile(r'[0-9$£€₹₱SR,]+')
+num_pattern = re.compile(r'[0-9$£€₹₱SR,.]+')
 child_map = {'1':'one','2':'two', '3':'three', '4':'four'}
 
 
@@ -202,10 +202,8 @@ def match_pii(og_prompt: str, pii_values: dict) -> dict:
             if len(s) > 1:
                 if (s[0] in prompt and s[1] in prompt) or (s[0].lower() in prompt and s[1].lower() in prompt):
                     pii[k] = v
-                elif s[0] in prompt or s[0].lower() in prompt:
+                elif s[0] in prompt or s[0].lower() in prompt: #Handles when only first names appear
                     pii[k] = s[0]
-                elif s[1] in prompt or s[1].lower() in prompt:
-                    pii[k] = s[1]
                 else:
                     continue
             else:
