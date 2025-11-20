@@ -164,7 +164,8 @@ def match_pii(og_prompt: str, pii_values: dict) -> dict:
                 pii[k]=v
 
         elif k in ['Children Count']:
-            print(v)
+            if v == 0:
+                continue
             if child_map[v] in prompt:
                 pii[k]=v
             
