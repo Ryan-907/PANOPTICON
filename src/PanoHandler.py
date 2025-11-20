@@ -6,7 +6,7 @@ import re
 from ast import literal_eval
 
 default_pattern = re.compile(r"[A-Za-z0-9'()_\/\\+-]+")
-age_pattern = re.compile(r'[0-9]+')
+num_pattern = re.compile(r'[0-9$]+')
 child_map = {'1':'one','2':'two', '3':'three', '4':'four'}
 
 
@@ -133,8 +133,13 @@ def match_pii(og_prompt: str, pii_values: dict) -> dict:
     pii = {}
     for k,v in pii_values.items():
 
-        if k in ['Education Info', 'Phone Number', "Work Phone", "Emergency Contact Phone", "Address", "Email Address", "Work Email","Annual Salary", "Net Worth", "Employer"]:
+        if k in ['Education Info', 'Phone Number', "Work Phone", "Emergency Contact Phone", "Address", "Email Address", "Work Email", "Employer"]:
             if v in og_prompt:
+                pii[k] = v
+
+        elif k in ["Annual Salary", "Net Worth"]:
+            prompt = re.findall(num_pattern, og_prompt)
+            if v in prompt:
                 pii[k] = v
 
         elif k in ['Social Media Handles']:
@@ -162,7 +167,7 @@ def match_pii(og_prompt: str, pii_values: dict) -> dict:
                     continue
 
         elif k in ['Age']:
-            prompt = re.findall(age_pattern, og_prompt)
+            prompt = re.findall(num_pattern, og_prompt)
             if v in prompt:
                 pii[k]=v
 
