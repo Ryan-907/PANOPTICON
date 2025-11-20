@@ -28,7 +28,7 @@ Your response must contain **exactly one section.**
 ## Mandatory Constraints  
 - Maintain professional tone and coherence consistent with the individual’s background in the “Article” and “Content.”  
 - The prompt must be in **first-person** and sound like it is being typed by the synthetic person, not about them.  
-- The prompt must be a **request for editorial help**, not for technical troubleshooting, analysis, or explanation.  
+- The prompt must be a **proffesional document generation assistance** , not for technical troubleshooting, analysis, or explanation.  
 - PII values must be **naturally woven** into sentences (e.g., “I’ve worked at X company”) — never listed or formatted as “Label: Value” inside the prompt text.  
 - Use a **realistic subset** of the provided PII List. Do not include all of it, be creative while retaining realism.    
 - Avoid overstuffing PII — the goal is realism, not maximal inclusion.
