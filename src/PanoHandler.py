@@ -8,7 +8,7 @@ from ast import literal_eval
 default_pattern = re.compile(r"[A-Za-z0-9'()_\/\\+-]+")
 age_pattern = re.compile(r'[0-9]+')
 
-child_map = {'one':1,'two':2, 'three':3, 'four':4}
+child_map = {'1':'one','2':'two', '3':'three', '4':'four'}
 
 
 '''
@@ -162,7 +162,9 @@ def match_pii(og_prompt: str, pii_values: dict) -> dict:
             prompt = re.findall(age_pattern, og_prompt)
             if v in prompt:
                 pii[k]=v
+
         elif k in ['Children Count']:
+            print(v)
             if child_map[v] in prompt:
                 pii[k]=v
             
@@ -227,7 +229,7 @@ if __name__=='__main__':
 
         pii = {k: full_pii[k] for k in full_pii}
         print('Matcing pii...')
-        v = match_pii(og_prompt="As I near my 68th birthday, I'm reflecting on my career as a mechanical engineer at WOBN Trust Inc. and the numerous challenges I've faced, particularly with the financial constraints that have often limited our projects. Despite these obstacles, I've managed to distinguish myself through a steadfast commitment to precision and innovation, and I'm eager to revisit my résumé to ensure it accurately reflects my experience and achievements. I'd appreciate your help in revising it to better showcase my skills and qualifications, particularly in light of my PhD in engineering and my ability to approach complex challenges with creative problem-solving", pii_values=full_pii)
+        v = match_pii(og_prompt="As I approach my 68th birthday, I've been reflecting on my career as a mechanical engineer at WOBN Trust Inc. and the various challenges I've faced in my role. With a PhD in hand, I've always strived to bring a unique blend of technical expertise and creative problem-solving to the table, often navigating complex engineering challenges with precision and innovation. My experience working under financial constraints has taught me the value of pragmatism, and I've learned to approach each project with a clear-eyed focus on what's feasible and what's not. I'm proud of the work I've done, from designing and implementing new systems to mentoring junior engineers, and I'm eager to continue making meaningful contributions to the field. Now, I'm looking to update my résumé to better reflect my accomplishments and experience, and I'd love some help from a skilled editor to ensure it accurately showcases my skills and achievements.", pii_values=full_pii)
         print(v)
         input()
         print(list(v.items()))
