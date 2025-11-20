@@ -165,11 +165,11 @@ def match_pii(og_prompt: str, pii_values: dict) -> dict:
             prompt = re.findall(default_pattern, og_prompt) #Generally handles first and last names while leaving possibilty to only capture first or last names
             s = v.split()
             if len(s) > 1:
-                if s[0] in prompt and s[1] in prompt:
+                if (s[0] in prompt and s[1] in prompt) or (s[0].lower() in prompt and s[1].lower() in prompt):
                     pii[k] = v
-                elif s[0] in prompt:
+                elif s[0] in prompt or s[0].lower() in prompt:
                     pii[k] = s[0]
-                elif s[1] in prompt:
+                elif s[1] in prompt or s[0].lower() in prompt:
                     pii[k] = s[1]
                 else:
                     continue

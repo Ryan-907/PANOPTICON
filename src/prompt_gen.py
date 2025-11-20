@@ -26,7 +26,7 @@ ids = pano_p.get_ids() #list of unique IDs
 
 
 #Main loop
-for uid in ids[]: #Skipping 1 as profile one is used to provide example for one shot in prompt
+for uid in ids: #Skipping 1 as profile one is used to provide example for one shot in prompt
     #content = [] 
 
     #Filtering by uid to get appropriate information associated with each profile
