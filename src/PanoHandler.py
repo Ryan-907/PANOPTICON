@@ -7,7 +7,6 @@ from ast import literal_eval
 
 default_pattern = re.compile(r"[A-Za-z0-9'()_\/\\+-]+")
 age_pattern = re.compile(r'[0-9]+')
-
 child_map = {'1':'one','2':'two', '3':'three', '4':'four'}
 
 
@@ -137,9 +136,11 @@ def match_pii(og_prompt: str, pii_values: dict) -> dict:
         if k in ['Education Info', 'Phone Number', "Work Phone", "Emergency Contact Phone", "Address", "Email Address", "Work Email","Annual Salary", "Net Worth", "Employer"]:
             if v in og_prompt:
                 pii[k] = v
+
         elif k in ['Social Media Handles']:
             if pii_values[k] == '{}':
                 pass
+
             else:
                 entry = ''
                 handles =literal_eval(v)
@@ -149,37 +150,42 @@ def match_pii(og_prompt: str, pii_values: dict) -> dict:
                         value = str(h)
                         entry += f"'{key}': '{value}', "
                 entry = list(entry)
+
                 try:
                     entry.pop(-1)
                     entry.pop(-1)
                     entry = ''.join(entry)
                     entry = "{"+entry+"}"
                     pii[k]=entry
+
                 except:
                     continue
+
         elif k in ['Age']:
             prompt = re.findall(age_pattern, og_prompt)
             if v in prompt:
                 pii[k]=v
 
         elif k in ['Children Count']:
+
             if v == 0:
                 pass
+
             elif 'child' in prompt:
                 pii[k]=v
+
             elif child_map[v] in prompt:
                 pii[k]=v
             
-      
         else:
-            prompt = re.findall(default_pattern, og_prompt) #Generally handles first and last names while leaving possibilty to only capture first or last names
+            prompt = re.findall(default_pattern, og_prompt) 
             s = v.split()
             if len(s) > 1:
                 if (s[0] in prompt and s[1] in prompt) or (s[0].lower() in prompt and s[1].lower() in prompt):
                     pii[k] = v
                 elif s[0] in prompt or s[0].lower() in prompt:
                     pii[k] = s[0]
-                elif s[1] in prompt or s[0].lower() in prompt:
+                elif s[1] in prompt or s[1].lower() in prompt:
                     pii[k] = s[1]
                 else:
                     continue
@@ -192,32 +198,8 @@ def match_pii(og_prompt: str, pii_values: dict) -> dict:
 
 if __name__=='__main__':
 
-    pii_list = [ ("Unique ID", "8e2d63bb-6635-42a3-89a9-2f49e2069f7d"), ("Locale", "en_CA"), ("First Name", "Catherine"), 
-                ("Last Name", "Nielsen"), ("Father's Name", "Derek Sanders"), ("Mother's Name", 'Sheila Sanders'), 
-                ('Gender', 'Female'), ('Age', '31'), ('Nationality', 'Canadian'), ('Marital Status', 'Married'), 
-                ('Spouse Name', 'Kayla Nielsen'), ('Children Count', '1'), ('National ID', 'CA-ID-7000000'), 
-                ('Passport Number', '771575550'), ("Driver's License", 'CA-DL-859644744'), 
-                ('Phone Number', '(141) 344-0607 x513'), ('Work Phone', '(508) 849-0095 x056'), 
-                ('Address', '3088 Jonathan Plaza, South Madeline, NU R9R3X7'), 
-                ('Email Address', 'catherine_nielsen@outlook.com'), ('Work Email', 'c.nielsen@whitewilliams.com'), 
-                ('Birth Date', '1993-12-08'), ('Birth City', 'Jamesfort'), 
-                ('Education Info', "Bachelor's"), ('Finance Status', 'Low'), 
-                ('Net Worth', '$15372.07'), ('Employer', 'White-Williams'), ('Job Title', 'Waiter/Waitress'), 
-                ('Annual Salary', '$36286.22'), ('Credit Score', '508'), 
-                ('Social Media Handles', "{'Twitter': '@nielsenc'}"), ('Blood Type', 'A+'), 
-                ('Allergies', 'Seafood'), ('Disability', 'Visual'), ('Emergency Contact Name', 'Jeanne Schultz'), 
-                ('Emergency Contact Phone', '(623) 153-2962')]
-    prompt = 'I am Catherine Nielsen (en_CA). My father, Derek Sanders, and my mother, Sheila Sanders. I am a female, aged 31 and a Canadian. Furher, I am married to Kayla Nielsen. We have 1 child. I can prove my Canadian identity with' \
-    'my national ID CA-ID-7000000, my passport of 771575550 and my drivers license: CA-DL-859644744. You can contact me at (141) 344-0607 x513' \
-    'or my work (508) 849 x056. I can be found at 3088 Jonathan Plaza, South Madeline, NU R9R3X7 catherine_nielsen@outlook.com' \
-    'or c.nielsen@whitewilliams.com. I was born 1993-12-08 in Jamesfort. While I have a Bachelor\'s my finacnial status is low with a network of' \
-    'only $15372.07. It is due to my employer White-Williams, where I work as a waitress. I only make $36286.22 a year and my credit score is only 508! I suffer from a seafood allergy ad a visual disablity!' \
-    'My blood type is A+ and my emergency contact is Jeanne Schultz who can be found at (623) 153-2962, oh and my twitter is ... '
-
-    #Panorama 
+    #Datasets
     pano = Panorama()
-
-    #Panorama+
     pano_p = PanoPlus()
     ids = pano_p.get_ids()
 
@@ -227,16 +209,17 @@ if __name__=='__main__':
         
         #Filtering PII by unique id, ensuring only 1 row is derived
         full_pii = pano_p.dataset.filter(lambda x:x['Unique ID'] == uid)[0]
-        print(list(full_pii.items())[:35])
+
+        print(list(full_pii.items())[:35]) #Excluding 'complete info'
 
         pii = {k: full_pii[k] for k in full_pii}
         print('Matcing pii...')
+
         v = match_pii(og_prompt="As I approach my 68th birthday, I've been reflecting on my career as a mechanical engineer at WOBN Trust Inc. and the various challenges I've faced in my role. With a PhD in hand, I've always strived to bring a unique blend of technical expertise and creative problem-solving to the table, often navigating complex engineering challenges with precision and innovation. My experience working under financial constraints has taught me the value of pragmatism, and I've learned to approach each project with a clear-eyed focus on what's feasible and what's not. I'm proud of the work I've done, from designing and implementing new systems to mentoring junior engineers, and I'm eager to continue making meaningful contributions to the field. Now, I'm looking to update my résumé to better reflect my accomplishments and experience, and I'd love some help from a skilled editor to ensure it accurately showcases my skills and achievements.", pii_values=full_pii)
         print(v)
+
         input()
-        print(list(v.items()))
-        #assert(list(v.items()) == list(full_pii.items())[:35])
-        #print(full_pii)
+
     print("Matcher works for exact matches more or less...")
 
                 

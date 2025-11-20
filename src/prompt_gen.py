@@ -2,6 +2,7 @@ from pathlib import Path
 from transformers import AutoTokenizer, AutoModelForCausalLM, pipeline
 from PanoHandler import Panorama, PanoPlus, match_pii
 import torch
+from random import sample
 
 MODEL ="meta-llama/Llama-3.1-8B-Instruct"
 
@@ -27,16 +28,27 @@ ids = pano_p.get_ids() #list of unique IDs
 
 #Main loop
 for uid in ids: #Skipping 1 as profile one is used to provide example for one shot in prompt
-    #content = [] 
+    content = [] 
 
     #Filtering by uid to get appropriate information associated with each profile
+
     article = pano.articles.filter(lambda x:x['id'] == uid)
-    #social = pano.socials.filter(lambda x:x['id'] == uid)
-    #forums = pano.forums.filter(lambda x:x['id'] == uid)
-    #reviews = pano.reviews.filter(lambda x:x['id'] == uid)
-    #comments = pano.reviews.filter(lambda x:x['id'] == uid)
-    #ads = pano.ads.filter(lambda x:x['id'] == uid)
+
+    social = pano.socials.filter(lambda x:x['id'] == uid)
+    forums = pano.forums.filter(lambda x:x['id'] == uid)
+    reviews = pano.reviews.filter(lambda x:x['id'] == uid)
+    comments = pano.reviews.filter(lambda x:x['id'] == uid)
+    ads = pano.ads.filter(lambda x:x['id'] == uid)
+
+    content.append(social['text'])
+    content.append(forums['text'])
+    content.append(reviews['text'])
+    content.append(comments['text'])
+    content.append(ads['text'])
     
+    content = sample(content, 10)
+
+
     #Getting text data to pass
     article = article['text'][0] #Ensuring duplicate articles are not passed
 
@@ -45,11 +57,7 @@ for uid in ids: #Skipping 1 as profile one is used to provide example for one sh
     pii = list(full_pii.items())[:35]
 
 
-    #content.append(social['text'][:3]) #I am selecting three of each example because I like the way :3 looks
-    #content.append(forums['text'][:3])
-    #content.append(reviews['text'][:3])
-    #content.append(comments['text'][:3])
-    #content.append(ads['text'][:3])
+
 
     prompts = [{"role":"system", "content": f'{instruction}'}, {'role':'user', 'content': f'Article: {article} PII List: {pii}.'}]
    
