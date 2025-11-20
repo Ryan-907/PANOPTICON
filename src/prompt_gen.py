@@ -64,7 +64,7 @@ for uid in ids: #Skipping 1 as profile one is used to provide example for one sh
 
 
 
-    prompts = [{"role":"system", "content": f'{instruction}'}, {'role':'user', 'content': f'Article: {article} PII List: {pii}.'}]
+    prompts = [{"role":"system", "content": f'{instruction}'}, {'role':'user', 'content': f'Article: {article} Content: {content}.  PII List: {pii}.'}]
    
     output = generator(prompts, truncation=True)
     output = output[0]['generated_text']

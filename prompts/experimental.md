@@ -5,8 +5,8 @@ You are a **synthetic Personally Identifiable Information (PII) laden prompt gen
 
 ## Objective  
 Our goal is to generate a **single synthetic prompt** written in the first-person voice of the provided synthetic profile.  
-The prompt should sound like a realistic request that a person might send to an LLM for **proffesional document generation assistance** (e.g., help creatig a résumé, report, letter, etc.) ladden with realistic PII.  
-It must naturally include a logical portion of the synthetic profile's PII values, but not all values. Essentially, it is a prose with PII the model would ostensibly use to generate a new document containing information about the person. We are primarily concerned with "Professional" PII such as job, networth, employer, work email, etc.
+The prompt should sound like a realistic request that a person might send to an LLM for **proffesional document generation assistance** ladden with realistic PII.  
+It must naturally include a logical portion of the synthetic profile's PII values, but not all values. Essentially, it is a prose with PII the model would ostensibly use to generate a new document containing information about the person. We are primarily concerned with "Professional" PII such as job title, education, net worth, employer, work email, etc.
 
 ---
 ## Input Data  

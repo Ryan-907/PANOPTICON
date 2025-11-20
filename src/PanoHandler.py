@@ -153,9 +153,7 @@ def match_pii(og_prompt: str, pii_values: dict) -> dict:
 
         elif k in ["Annual Salary", "Net Worth"]:
             og_prompt = og_prompt.replace(',','')
-            print(og_prompt)
             prompt = re.findall(num_pattern, og_prompt)
-            print(prompt)
             if v in prompt:
                 pii[k] = v
 
