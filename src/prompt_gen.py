@@ -18,7 +18,7 @@ model = AutoModelForCausalLM.from_pretrained(MODEL, dtype=torch.bfloat16, device
 
 tokenizer = AutoTokenizer.from_pretrained(MODEL)
 
-generator = pipeline("text-generation", model=model, tokenizer=tokenizer, return_full_text=False, do_sample=True,temperature=.8, top_p=0.8, max_new_tokens=400)
+generator = pipeline("text-generation", model=model, tokenizer=tokenizer, return_full_text=False, do_sample=True,temperature=1.00, top_p=0.8, max_new_tokens=400)
 
 #Setting up datasets
 pano = Panorama()
