@@ -7,7 +7,7 @@ from ast import literal_eval
 
 default_pattern = re.compile(r"[A-Za-z0-9'()_\/\\+-]+")
 address_pattern = re.compile(r"[A-Za-z0-9,']+")
-num_pattern = re.compile(r'[0-9$£€₹₱SR,.]+')
+num_pattern = re.compile(r'[0-9$£€₹₱SR]+(?:\.\d+)')
 child_map = {'1':'one','2':'two', '3':'three', '4':'four'}
 
 
@@ -152,7 +152,10 @@ def match_pii(og_prompt: str, pii_values: dict) -> dict:
                 pii[k]=val
 
         elif k in ["Annual Salary", "Net Worth"]:
+            og_prompt = og_prompt.replace(',','')
+            print(og_prompt)
             prompt = re.findall(num_pattern, og_prompt)
+            print(prompt)
             if v in prompt:
                 pii[k] = v
 
@@ -232,7 +235,7 @@ if __name__=='__main__':
         pii = {k: full_pii[k] for k in full_pii}
         print('Matcing pii...')
 
-        v = match_pii(og_prompt=" Lambunao, Davao del Sur", pii_values=full_pii)
+        v = match_pii(og_prompt="As I continue to navigate my career as a waiter/waitress at White-Williams, I find myself seeking ways to create a comprehensive professional portfolio that showcases my skills and experience in the service industry. With a modest net worth of $15,372.07 and an annual salary of $36,286.22, I'm eager to highlight my accomplishments and demonstrate my potential to future employers. I've recently been working on refining my interpersonal skills, which has allowed me to build strong relationships with our diverse clientele, and I'd love to create a résumé that effectively conveys this expertise.", pii_values=full_pii)
         print(v)
         input()
 
