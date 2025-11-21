@@ -5,7 +5,7 @@ import random
 import re
 from ast import literal_eval
 
-default_pattern = re.compile(r"[A-Za-z0-9'()_\/\\+-]+")
+default_pattern = re.compile(r"[A-Za-z0-9'_\/\\+-]+")
 address_pattern = re.compile(r"[A-Za-z0-9,']+")
 num_pattern = re.compile(r'[0-9$£€₹₱SR]+(?:\.\d+)')
 child_map = {'1':'one','2':'two', '3':'three', '4':'four'}
@@ -162,10 +162,11 @@ def match_pii(og_prompt: str, pii_values: dict) -> dict:
                 pass
 
             else:
+                prompt = re.findall(default_pattern, og_prompt)
                 entry = ''
                 handles =literal_eval(v)
                 for sk, h in handles.items():
-                    if h in og_prompt:
+                    if h in prompt:
                         key = str(sk)
                         value = str(h)
                         entry += f"'{key}': '{value}', "
