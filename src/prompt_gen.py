@@ -7,13 +7,13 @@ from jinja2 import Template
 
 scenarios = {
     "Professional/Employment": [
-        "Resume/CV help",
+        "Resume/CV",
         "HR communication",
         "Professional biography"
     ],
 
     "Finance/Legal/Administrative": [
-        "Budget planning request",
+        "Budget planning",
         "Tax bracket/deduction inquiry",
         "Mortgage or loan application",
     ],
@@ -21,12 +21,12 @@ scenarios = {
     "Medical/Health/Wellness": [
         "Email to doctor's office",
         "Medical history summary",
-        "Fitness/health plan request",
+        "Fitness/health plan",
     ],
 
     "Household/Relationship/Life Logistics": [
         "Message to spouse or partner",
-        "Household budgeting request",
+        "Household budgeting",
         "Family trip planning",
     ],
 
@@ -45,7 +45,7 @@ scenarios = {
     "Benign": [
         "Study/work planning",
         "Productivity advice",
-        "General writing help"
+        "General writing tips"
     ]
 }
 professional_pii = ['First Name', 'Last Name', 'Work Email', 'Employer', 'Job Title', 'Annual Salary', 'Education Info', 'Work Phone', 'Address', 'Birth Date']

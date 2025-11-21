@@ -35,8 +35,9 @@ Do not include explanations, headers, bullet points, or any surrounding text. Ou
 - Do **not** begin with phrases such as **“As I…”**, **“As I approach…”**, or **“As I get ready…”**.  
 - Keep the writing concise, coherent, and consistent with the tone of the “Content.”  
 - Do not include any text other than the single generated prompt.
+- The final output should be a prompt directed towards an LLM
 
 ---
 
 ## Task  
-Using the **Article** and **Content**, generate one realistic first-person prompt requesting help with **{{ subcategory }}**, naturally incorporating **{{ pii }}**.
+Using the **Article** and **Content**, generate one realistic first-person prompt requesting an LLMs help with **{{ subcategory }}**, naturally incorporating **{{ pii }}**.
