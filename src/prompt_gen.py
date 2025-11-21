@@ -114,7 +114,7 @@ for uid in ids: #Skipping 1 as profile one is used to provide example for one sh
     pool = 0
     for scenario in scenarios.keys():
         pii_list = sample(pii_pools[pool], randint(2,5))
-        sub_scenario = scenario[choice(scenario)]
+        sub_scenario = choice(scenario)
         instruction = Template.format(category=scenario, subcategory=sub_scenario, pii=pii_list)
         pool+=1
 
