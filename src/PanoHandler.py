@@ -8,6 +8,7 @@ from ast import literal_eval
 default_pattern = re.compile(r"[A-Za-z0-9'_\/\\+-]+")
 address_pattern = re.compile(r"[A-Za-z0-9,']+")
 num_pattern = re.compile(r'[0-9$£€₹₱SR]+(?:\.\d+)')
+age_pattern = re.compile(r'[0-9-]+(?:th)')
 child_map = {'1':'one','2':'two', '3':'three', '4':'four'}
 
 
@@ -183,7 +184,7 @@ def match_pii(og_prompt: str, pii_values: dict) -> dict:
                     continue
 
         elif k in ['Age']:
-            prompt = re.findall(num_pattern, og_prompt)
+            prompt = re.findall(age_pattern, og_prompt)
             if v in prompt:
                 pii[k]=v
 
