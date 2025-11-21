@@ -6,7 +6,7 @@ import re
 from ast import literal_eval
 
 default_pattern = re.compile(r"[A-Za-z0-9'_\/\\+-]+")
-address_pattern = re.compile(r"[A-Za-z0-9,']+")
+address_pattern = re.compile(r"[A-Za-z0-9,'.]+")
 num_pattern = re.compile(r'[0-9$£€₹₱SR]+(?:\.\d+)')
 age_pattern = re.compile(r'[0-9-]+(?:th)')
 child_map = {'1':'one','2':'two', '3':'three', '4':'four'}
@@ -235,7 +235,7 @@ if __name__=='__main__':
         pii = {k: full_pii[k] for k in full_pii}
         print('Matcing pii...')
 
-        v = match_pii(og_prompt="As I continue to navigate my career as a waiter/waitress at White-Williams, I find myself seeking ways to create a comprehensive professional portfolio that showcases my skills and experience in the service industry. With a modest net worth of $15,372.07 and an annual salary of $36,286.22, I'm eager to highlight my accomplishments and demonstrate my potential to future employers. I've recently been working on refining my interpersonal skills, which has allowed me to build strong relationships with our diverse clientele, and I'd love to create a résumé that effectively conveys this expertise.", pii_values=full_pii)
+        v = match_pii(og_prompt="I need help drafting a response to an employee complaint about a manufacturing tolerance issue in one of our critical gear assemblies at WOBN Trust Inc. in Lambunao. I've been reviewing the logs and it seems like a GearMismatchException is causing the problem, but I'm not sure how to approach redesigning the assembly without going over our low net worth constraints. Can you assist me in crafting a clear and concise explanation of the issue and our proposed solution?", pii_values=full_pii)
         print(v)
         input()
 
