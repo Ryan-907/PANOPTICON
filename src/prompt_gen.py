@@ -68,7 +68,12 @@ with open(system_prompt, 'r', encoding='utf-8') as f:
 #setting up model and generation
 model = AutoModelForCausalLM.from_pretrained(MODEL, dtype=torch.bfloat16, device_map='auto', low_cpu_mem_usage=True)
 tokenizer = AutoTokenizer.from_pretrained(MODEL)
+<<<<<<< HEAD
 generator = pipeline("text-generation", model=model, tokenizer=tokenizer, return_full_text=False, do_sample=True,temperature=.8, top_p=0.8, max_new_tokens=400)
+=======
+
+generator = pipeline("text-generation", model=model, tokenizer=tokenizer, return_full_text=False, do_sample=True,temperature=1.00, top_p=0.8, max_new_tokens=400)
+>>>>>>> eb8197c9e4b56fabbf08f1c1af54808146b3709c
 
 #Setting up datasets
 pano = Panorama()
