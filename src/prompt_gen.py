@@ -124,7 +124,6 @@ for uid in ids: #Skipping 1 as profile one is used to provide example for one sh
             sub_scenario = choice(scenarios[scenario])
             print(f"subscenario: {sub_scenario}\n")
             instruction = template.render(category=scenario, subcategory=sub_scenario, pii=pii_list)
-            print(f"instruction: {instruction}\n")
             pool+=1
 
 
