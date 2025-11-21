@@ -71,7 +71,7 @@ template = Template(instruction_md)
 model = AutoModelForCausalLM.from_pretrained(MODEL, dtype=torch.bfloat16, device_map='auto', low_cpu_mem_usage=True)
 tokenizer = AutoTokenizer.from_pretrained(MODEL)
 
-generator = pipeline("text-generation", model=model, tokenizer=tokenizer, return_full_text=False, do_sample=True,temperature=.8, top_p=0.8, max_new_tokens=100)
+generator = pipeline("text-generation", model=model, tokenizer=tokenizer, return_full_text=False, do_sample=True,temperature=.8, top_p=0.8, max_new_tokens=200)
 
 
 
@@ -119,7 +119,7 @@ for uid in ids: #Skipping 1 as profile one is used to provide example for one sh
         if scenario == 'benign':
             pii_list = pii_pools[-1]
         else:
-            pii_list = sample(pii_pools[pool], randint(2,5))
+            pii_list = sample(pii_pools[pool], randint(2,6))
             print(f"PII List: {pii_list}\n")
             sub_scenario = choice(scenarios[scenario])
             print(f"subscenario: {sub_scenario}\n")
