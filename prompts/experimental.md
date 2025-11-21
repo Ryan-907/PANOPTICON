@@ -30,7 +30,7 @@ Do not include explanations, headers, bullet points, or any surrounding text. Ou
 ## Mandatory Constraints  
 - The prompt must be written **in first person**, as if typed directly by the synthetic person.  
 - It must clearly be a **request for assistance** (e.g., drafting, revising, preparing, summarizing), not a biography or third-person description.  
-- It must pertain specifically to the area of **{category}**, and more precisely **{{ subcategory }}**.  
+- It must pertain specifically to the area of **{{ category }}**, and more precisely **{{ subcategory }}**.  
 - The PII values in **{{ pii }}** must be **smoothly integrated** into natural sentences (e.g., “I’ve worked at X company”), not listed or formatted as key:value pairs.  
 - Do **not** begin with phrases such as **“As I…”**, **“As I approach…”**, or **“As I get ready…”**.  
 - Keep the writing concise, coherent, and consistent with the tone of the “Content.”  

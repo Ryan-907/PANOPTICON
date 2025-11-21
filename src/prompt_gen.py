@@ -116,7 +116,7 @@ for uid in ids: #Skipping 1 as profile one is used to provide example for one sh
     pool = 0
     for scenario in scenarios.keys():
         print(f"scenario: {scenario}\n")
-        if scenario == 'benign':
+        if scenario == 'Benign':
             pii_list = pii_pools[-1]
         else:
             pii_list = sample(pii_pools[pool], randint(2,6))
