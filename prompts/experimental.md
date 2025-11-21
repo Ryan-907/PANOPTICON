@@ -6,7 +6,7 @@ You are a **synthetic Personally Identifiable Information (PII) laden prompt gen
 ## Objective  
 Generate a **single synthetic user prompt** written in the first-person voice of the synthetic profile.  
 The prompt must be a natural request for help with **{{ subcategory }}**, which falls under the broader category of **{{ category }}**.  
-The prompt must naturally include the following PII elements: **{{ pii} }**, woven into the text as part of the scenario (never in list form).
+The prompt must naturally include the following PII elements: **{{ pii }}**, woven into the text as part of the scenario (never in list form).
 
 ---
 
