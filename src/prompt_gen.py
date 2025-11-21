@@ -63,7 +63,9 @@ MODEL ="meta-llama/Llama-3.1-8B-Instruct"
 current_directory = Path(__file__).parent
 system_prompt = current_directory.parent / 'prompts' / 'experimental.md'
 with open(system_prompt, 'r', encoding='utf-8') as f:
-    instruction = f.read()
+    instruction_md = f.read()
+
+template = Template(instruction_md)
 
 #setting up model and generation
 model = AutoModelForCausalLM.from_pretrained(MODEL, dtype=torch.bfloat16, device_map='auto', low_cpu_mem_usage=True)
@@ -89,7 +91,7 @@ for uid in ids: #Skipping 1 as profile one is used to provide example for one sh
     social = pano.socials.filter(lambda x:x['id'] == uid)
     forums = pano.forums.filter(lambda x:x['id'] == uid)
     reviews = pano.reviews.filter(lambda x:x['id'] == uid)
-    comments = pano.reviews.filter(lambda x:x['id'] == uid)
+    comments = pano.comments.filter(lambda x:x['id'] == uid)
     ads = pano.ads.filter(lambda x:x['id'] == uid)
 
     data.append(social['text'])
@@ -113,10 +115,13 @@ for uid in ids: #Skipping 1 as profile one is used to provide example for one sh
 
     pool = 0
     for scenario in scenarios.keys():
-        pii_list = sample(pii_pools[pool], randint(2,5))
-        sub_scenario = choice(scenario)
-        instruction = Template.render(category=scenario, subcategory=sub_scenario, pii=pii_list)
-        pool+=1
+        if scenario == 'benign':
+            pii_list = pii_pools[-1]
+        else:
+            pii_list = sample(pii_pools[pool], randint(2,5))
+            sub_scenario = choice(scenarios[scenario])
+            instruction = template.render(category=scenario, subcategory=sub_scenario, pii=pii_list)
+            pool+=1
 
 
 
@@ -127,8 +132,8 @@ for uid in ids: #Skipping 1 as profile one is used to provide example for one sh
 
         print(output)
 
-        pii = match_pii(output, full_pii)
-        print(pii)
+        matched_pii = match_pii(output, full_pii)
+        print(matched_pii)
         input()
 
         del output
