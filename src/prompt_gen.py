@@ -118,7 +118,7 @@ for uid in ids: #Skipping 1 as profile one is used to provide example for one sh
 
     #Getting relevat PII
     full_pii = pano_p.dataset.filter(lambda x:x['Unique ID'] == uid)[0] #Ensuring duplicate PII is not passed
-    full_pii = list(full_pii.items())[:35]
+    l_pii = list(full_pii.items())[:35]
 
     pool = 0
     for scenario in scenarios.keys():
@@ -129,7 +129,7 @@ for uid in ids: #Skipping 1 as profile one is used to provide example for one sh
             pii = []
             pii_list = pii_pools[pool]
             for i in pii_list:
-                for p in full_pii:
+                for p in l_pii:
                     if i == p[0]:
                         pii.extend(p)
 
