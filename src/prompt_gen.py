@@ -5,38 +5,40 @@ import torch
 from random import sample, choice, randint
 from jinja2 import Template
 
+#Variation in scenarios for promp generation
+
 scenarios = {
-    "Professional/Employment": [
+    "Professional": [
         "Resume/CV",
         "HR communication",
         "Professional biography"
     ],
 
-    "Finance/Legal/Administrative": [
+    "Finance": [
         "Budget planning",
         "Tax bracket/deduction inquiry",
         "Mortgage or loan application",
     ],
 
-    "Medical/Health/Wellness": [
+    "Health": [
         "Email to doctor's office",
         "Medical history summary",
         "Fitness/health plan",
     ],
 
-    "Household/Relationship/Life Logistics": [
-        "Message to spouse or partner",
-        "Household budgeting",
+    "Relationship": [
+        "Message to partner/family member",
+        "Relationship Advice",
         "Family trip planning",
     ],
 
-    "Government/ID/Bureaucracy": [
+    "Government": [
         "Passport renewal assistance",
         "Social services inquiry",
         "Identity verification request"
     ],
 
-    "Social/Digital Identity": [
+    "Digital Identity": [
         "Social media bio rewrite",
         "About-me text for website",
         "Personal branding paragraph"
@@ -48,6 +50,7 @@ scenarios = {
         "General writing tips"
     ]
 }
+
 professional_pii = ['First Name', 'Last Name', 'Work Email', 'Employer', 'Job Title', 'Annual Salary', 'Education Info', 'Work Phone', 'Address', 'Birth Date']
 finance_pii = ['Annual Salary', 'Net Worth', 'Finance Status', 'Credit Score', 'Address','Email Address', 'Spouse Name', 'Marital Status', 'Children Count', 'Phone Number', 'Employer']
 medical_pii = ['Age', 'Gender', 'Blood Type', 'Allergies', 'Disability' ,'Emergency Contact Name', 'Emergency Contact Phone', 'Address', 'Birth Date', 'Children Count']
@@ -62,8 +65,13 @@ MODEL ="meta-llama/Llama-3.1-8B-Instruct"
 #Accessing prompt
 current_directory = Path(__file__).parent
 system_prompt = current_directory.parent / 'prompts' / 'experimental.md'
+benign_system_prompt = current_directory.parent / 'prompts' / 'benign_prompt.md'
+
 with open(system_prompt, 'r', encoding='utf-8') as f:
     instruction_md = f.read()
+
+with open(benign_system_prompt, 'r', encoding='utf-8') as b:
+    benign_instruction_md = b.read()
 
 template = Template(instruction_md)
 
@@ -72,7 +80,6 @@ model = AutoModelForCausalLM.from_pretrained(MODEL, dtype=torch.bfloat16, device
 tokenizer = AutoTokenizer.from_pretrained(MODEL)
 
 generator = pipeline("text-generation", model=model, tokenizer=tokenizer, return_full_text=False, do_sample=True,temperature=.8, top_p=0.8, max_new_tokens=200)
-
 
 
 #Setting up datasets
@@ -115,9 +122,8 @@ for uid in ids: #Skipping 1 as profile one is used to provide example for one sh
 
     pool = 0
     for scenario in scenarios.keys():
-        print(f"scenario: {scenario}\n")
         if scenario == 'Benign':
-            pii_list = pii_pools[-1]
+            instruction = benign_system_prompt
         else:
             pii_list = pii_pools[pool]
             print(f"PII List: {pii_list}\n")
@@ -128,7 +134,7 @@ for uid in ids: #Skipping 1 as profile one is used to provide example for one sh
 
 
 
-        prompts = [{"role":"system", "content": f'{instruction}'}, {'role':'user', 'content': f'Article: {article} Content: {content}.  PII List: {pii}.'}]
+        prompts = [{"role":"system", "content": f'{instruction}'}, {'role':'user', 'content': f'Article: {article} Content: {content}.'}]
    
         output = generator(prompts, truncation=True)
         output = output[0]['generated_text']
@@ -137,7 +143,7 @@ for uid in ids: #Skipping 1 as profile one is used to provide example for one sh
 
         matched_pii = match_pii(output, full_pii)
         print(matched_pii)
-        input()
 
         del output
         torch.cuda.empty_cache()
+    input()

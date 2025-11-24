@@ -6,11 +6,11 @@ import re
 from ast import literal_eval
 
 default_pattern = re.compile(r"[A-Za-z0-9'_\/\\+-]+")
-address_pattern = re.compile(r"[A-Za-z0-9,'.]+")
-num_pattern = re.compile(r'[0-9$£€₹₱SR]+(?:\.\d+)')
-age_pattern = re.compile(r'[0-9-]+(?:th)')
+social_media_pattern = re.compile(r"[A-Za-z0-9._@]+")
+address_pattern = re.compile(r"[A-Za-z0-9']+")
+fin_pattern = re.compile(r'[0-9$£€₹₱SR]+(?:\.\d+)')
+age_pattern = re.compile(r'[0-9]')
 child_map = {'1':'one','2':'two', '3':'three', '4':'four'}
-
 
 '''
 Dealing with the following datasets:
@@ -82,7 +82,6 @@ class Panorama:
         self.comments = self.dataset.filter(lambda x:x['content-type'] == self.content_types[4])
         self.ads = self.dataset.filter(lambda x:x['content-type'] == self.content_types[5])
     
- 
 @dataclass
 class Entry:
     idx: int = None
@@ -95,8 +94,6 @@ class Entry:
         self.id = self.dataset[self.idx]['id']
         self.content_type = self.dataset[self.idx]['content-type']
         self.text = self.dataset[self.idx]['text']
-
-
 
 @dataclass
 class PanoPlus:
@@ -130,15 +127,30 @@ class PanoPlus:
         num_features = random.randint(2,5)
         return random.sample(features, num_features)
 
-
 def match_pii(og_prompt: str, pii_values: dict) -> dict:
     pii = {}
     for k,v in pii_values.items():
-
-        if k in ['Education Info', 'Phone Number', "Work Phone", "Emergency Contact Phone", "Email Address", "Work Email", "Employer"]:
-            if v in og_prompt:
-                pii[k] = v
         
+        if k == 'Age':
+            prompt = re.findall(age_pattern, og_prompt)
+            if v in prompt:
+                pii[k]=v
+
+        elif k in ["Annual Salary", "Net Worth"]:
+            prompt = og_prompt.replace(',','')
+            prompt = re.findall(fin_pattern, prompt)
+            if v in prompt:
+                pii[k] = v
+
+        elif k in ['Children Count']:
+
+            if v == '0':
+                pass
+            elif 'child' in prompt:
+                pii[k]=v
+            elif child_map[v] in prompt:
+                pii[k]=v
+
         elif k in ['Address']:
             val = ''
             prompt = re.findall(address_pattern, og_prompt)
@@ -152,52 +164,20 @@ def match_pii(og_prompt: str, pii_values: dict) -> dict:
             else:
                 pii[k]=val
 
-        elif k in ["Annual Salary", "Net Worth"]:
-            og_prompt = og_prompt.replace(',','')
-            prompt = re.findall(num_pattern, og_prompt)
-            if v in prompt:
-                pii[k] = v
-
         elif k in ['Social Media Handles']:
             if pii_values[k] == '{}':
                 pass
 
             else:
-                prompt = re.findall(default_pattern, og_prompt)
-                entry = ''
-                handles =literal_eval(v)
-                for sk, h in handles.items():
-                    if h in prompt:
-                        key = str(sk)
-                        value = str(h)
-                        entry += f"'{key}': '{value}', "
-                entry = list(entry)
+                handles = literal_eval(v)
+                for platform, handle in handles.items():
+                    if handle in og_prompt:
+                        pii[platform] = handle
 
-                try:
-                    entry.pop(-1)
-                    entry.pop(-1)
-                    entry = ''.join(entry)
-                    entry = "{"+entry+"}"
-                    pii[k]=entry
+        elif k in ['Education Info', 'Phone Number', "Work Phone", "Emergency Contact Phone", "Email Address", "Work Email", "Employer"]:
+            if v in og_prompt:
+                pii[k] = v
 
-                except:
-                    continue
-
-        elif k in ['Age']:
-            prompt = re.findall(age_pattern, og_prompt)
-            if v in prompt:
-                pii[k]=v
-
-        elif k in ['Children Count']:
-
-            if v == '0':
-                pass
-
-            elif 'child' in prompt:
-                pii[k]=v
-
-            elif child_map[v] in prompt:
-                pii[k]=v
             
         else:
             prompt = re.findall(default_pattern, og_prompt) 
@@ -235,7 +215,7 @@ if __name__=='__main__':
         pii = {k: full_pii[k] for k in full_pii}
         print('Matcing pii...')
 
-        v = match_pii(og_prompt="I need help drafting a response to an employee complaint about a manufacturing tolerance issue in one of our critical gear assemblies at WOBN Trust Inc. in Lambunao. I've been reviewing the logs and it seems like a GearMismatchException is causing the problem, but I'm not sure how to approach redesigning the assembly without going over our low net worth constraints. Can you assist me in crafting a clear and concise explanation of the issue and our proposed solution?", pii_values=full_pii)
+        v = match_pii(og_prompt="('Unique ID', '8e2d63bb-6635-42a3-89a9-2f49e2069f7d'), ('Locale', 'en_CA'), ('First Name', 'Catherine'), ('Last Name', 'Nielsen'), ('Father's Name', 'Derek Sanders'), ('Mother's Name', 'Sheila Sanders'), ('Gender', 'Female'), ('Age', '31'), ('Nationality', 'Canadian'), ('Marital Status', 'Married'), ('Spouse Name', 'Kayla Nielsen'), ('Children Count', '1'), ('National ID', 'CA-ID-7000000'), ('Passport Number', '771575550'), ('Driver's License', 'CA-DL-859644744'), ('Phone Number', '(141) 344-0607 x513'), ('Work Phone', '(508) 849-0095 x056'), ('Address', ' 3088 Jonathan Plaza, South Madeline, NU R9R3X7 '), ('Email Address', 'catherine_nielsen@outlook.com'), ('Work Email', 'c.nielsen@whitewilliams.com'), ('Birth Date', '1993-12-08'), ('Birth City', 'Jamesfort'), ('Education Info', 'Bachelor's'), ('Finance Status', 'Low'), ('Net Worth', '$15372.07'), ('Employer', 'White-Williams'), ('Job Title', 'Waiter/Waitress'), ('Annual Salary', '$36286.22'), ('Credit Score', '508'), ('Social Media Handles', '{' Twitter ': ' @nielsenc '}'), ('Blood Type', 'A+'), ('Allergies', 'Seafood'), ('Disability', 'Visual'), ('Emergency Contact Name', 'Jeanne Schultz'), ('Emergency Contact Phone', '(623) 153-2962')", pii_values=full_pii)
         print(v)
         input()
 

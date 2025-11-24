@@ -6,7 +6,7 @@ You are a **synthetic Personally Identifiable Information (PII) laden prompt gen
 ## Objective  
 Generate a **single synthetic user prompt** written in the first-person voice of the synthetic profile.  
 The prompt must be a natural request for help with **{{ subcategory }}**, which falls under the broader category of **{{ category }}**.  
-The prompt must naturally include PII elements woven into the text as part of the scenario (never in list form). Here is a suggested pool of PII to use: **{{ pii }}**, 
+The prompt must naturally include PII elements woven into the text as part of the scenario (never in list form). Here is a suggested pool of PII to use: **{{ pii }}**.
 
 ---
 
@@ -21,7 +21,7 @@ You will be given:
 ## Output Format  
 Your response must contain **only one thing**:
 
-- A single, coherent, first-person prompt requesting help from an LLM with **{{ subcategory }}**, written in the style of the synthetic person, and naturally containing at least some of this PII: **{{ pii }}**.
+- A single, coherent, first-person prompt requesting help from an LLM with **{{ subcategory }}**, written in the style of the synthetic person, and naturally containing at least some of this PII: **{{ pii }}**. Limit the prompt to 2-3 sentences. 
 
 Do not include explanations, headers, bullet points, or any surrounding text. Output just the prompt itself.
 
@@ -36,8 +36,6 @@ Do not include explanations, headers, bullet points, or any surrounding text. Ou
 - Keep the writing concise, coherent, and consistent with the tone of the “Content.”  
 - Do not include any text other than the single generated prompt.
 - The final output should be a prompt directed towards an LLM
-- 
-
 
 ---
 
