@@ -124,7 +124,7 @@ for uid in ids: #Skipping 1 as profile one is used to provide example for one sh
     for scenario in scenarios.keys():
         if scenario == 'Benign':
             print(f'{scenario}\n')
-            instruction = benign_system_prompt
+            instruction = benign_instruction_md
         else:
             pii = []
             pii_list = pii_pools[pool]
