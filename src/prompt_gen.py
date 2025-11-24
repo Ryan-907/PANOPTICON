@@ -52,9 +52,9 @@ scenarios = {
 }
 
 professional_pii = ['First Name', 'Last Name', 'Work Email', 'Employer', 'Job Title', 'Annual Salary', 'Education Info', 'Work Phone', 'Address', 'Birth Date']
-finance_pii = ['Annual Salary', 'Net Worth', 'Finance Status', 'Credit Score', 'Address','Email Address', 'Spouse Name', 'Marital Status', 'Children Count', 'Phone Number', 'Employer']
+finance_pii = ['Annual Salary', 'Net Worth', 'Finance Status', 'Credit Score', 'Email Address', 'Spouse Name', 'Marital Status', 'Children Count', 'Work Phone', 'Employer']
 medical_pii = ['Age', 'Gender', 'Blood Type', 'Allergies', 'Disability' ,'Emergency Contact Name', 'Emergency Contact Phone', 'Address', 'Birth Date', 'Children Count']
-relationship_pii = ['First Name', 'Last Name', 'Marital Status', 'Spouse Name', 'Children Count', 'Address', 'Phone Number']
+relationship_pii = ['First Name', 'Last Name', 'Marital Status', 'Spouse Name', "Father's Name", "Mother's Name", "Passport Number", 'Children Count', 'Phone Number']
 government_pii = ['First Name', 'Last Name', 'National ID','Passport Number', 'Driver\'s License', 'Birth Date', 'Address', 'Phone Number', 'Email Address', 'Nationality', 'Employer']
 social_pii = ['Social Media Handles', 'First Name', 'Last Name', 'Job Title', 'Nationality', 'Email Address']
 benign = ['This is a benign prompt, do not use any PII']
