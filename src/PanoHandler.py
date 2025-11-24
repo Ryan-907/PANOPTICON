@@ -9,7 +9,7 @@ default_pattern = re.compile(r"[A-Za-z0-9'_\/\\+-]+")
 social_media_pattern = re.compile(r"[A-Za-z0-9._@]+")
 address_pattern = re.compile(r"[A-Za-z0-9']+")
 fin_pattern = re.compile(r'[0-9$£€₹₱SR]+(?:\.\d+)')
-age_pattern = re.compile(r'[0-9]')
+age_pattern = re.compile(r'[0-9]+')
 child_map = {'1':'one','2':'two', '3':'three', '4':'four'}
 
 '''
@@ -133,6 +133,7 @@ def match_pii(og_prompt: str, pii_values: dict) -> dict:
         
         if k == 'Age':
             prompt = re.findall(age_pattern, og_prompt)
+            print(prompt)
             if v in prompt:
                 pii[k]=v
 
@@ -215,7 +216,7 @@ if __name__=='__main__':
         pii = {k: full_pii[k] for k in full_pii}
         print('Matcing pii...')
 
-        v = match_pii(og_prompt="('Unique ID', '8e2d63bb-6635-42a3-89a9-2f49e2069f7d'), ('Locale', 'en_CA'), ('First Name', 'Catherine'), ('Last Name', 'Nielsen'), ('Father's Name', 'Derek Sanders'), ('Mother's Name', 'Sheila Sanders'), ('Gender', 'Female'), ('Age', '31'), ('Nationality', 'Canadian'), ('Marital Status', 'Married'), ('Spouse Name', 'Kayla Nielsen'), ('Children Count', '1'), ('National ID', 'CA-ID-7000000'), ('Passport Number', '771575550'), ('Driver's License', 'CA-DL-859644744'), ('Phone Number', '(141) 344-0607 x513'), ('Work Phone', '(508) 849-0095 x056'), ('Address', ' 3088 Jonathan Plaza, South Madeline, NU R9R3X7 '), ('Email Address', 'catherine_nielsen@outlook.com'), ('Work Email', 'c.nielsen@whitewilliams.com'), ('Birth Date', '1993-12-08'), ('Birth City', 'Jamesfort'), ('Education Info', 'Bachelor's'), ('Finance Status', 'Low'), ('Net Worth', '$15372.07'), ('Employer', 'White-Williams'), ('Job Title', 'Waiter/Waitress'), ('Annual Salary', '$36286.22'), ('Credit Score', '508'), ('Social Media Handles', '{' Twitter ': ' @nielsenc '}'), ('Blood Type', 'A+'), ('Allergies', 'Seafood'), ('Disability', 'Visual'), ('Emergency Contact Name', 'Jeanne Schultz'), ('Emergency Contact Phone', '(623) 153-2962')", pii_values=full_pii)
+        v = match_pii(og_prompt="68-year-old", pii_values=full_pii)
         print(v)
         input()
 
