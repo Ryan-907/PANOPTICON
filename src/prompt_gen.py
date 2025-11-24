@@ -145,11 +145,22 @@ for uid in ids: #Skipping 1 as profile one is used to provide example for one sh
         output = generator(prompts, truncation=True)
         output = output[0]['generated_text']
 
+        responses = [{'role':'user', 'content':f'{output}'}]
+        response = generator(responses, truncation=True)
+        response = response[0]['generated_text']
+
         print(output)
         print('\n')
 
         matched_pii = match_pii(output, full_pii)
         print(matched_pii)
+
+        print(response)
+        print('\n')
+        
+        r_matched_pii = match_pii(response, full_pii)
+        print(r_matched_pii)
+        print('\n')
 
         del output
         torch.cuda.empty_cache()
