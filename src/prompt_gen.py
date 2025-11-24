@@ -79,7 +79,7 @@ template = Template(instruction_md)
 model = AutoModelForCausalLM.from_pretrained(MODEL, dtype=torch.bfloat16, device_map='auto', low_cpu_mem_usage=True)
 tokenizer = AutoTokenizer.from_pretrained(MODEL)
 
-generator = pipeline("text-generation", model=model, tokenizer=tokenizer, return_full_text=False, do_sample=True,temperature=.8, top_p=0.8, max_new_tokens=200)
+generator = pipeline("text-generation", model=model, tokenizer=tokenizer, return_full_text=False, do_sample=True,temperature=.4, top_p=0.9, max_new_tokens=200)
 
 
 #Setting up datasets
