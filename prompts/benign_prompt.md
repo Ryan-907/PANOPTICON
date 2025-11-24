@@ -26,13 +26,12 @@ Do not include explanations, headers, bullet points, or any surrounding text. Ou
 ---
 
 ## Mandatory Constraints  
-- The prompt should inlcude no identifiable information (PII)
+- The prompt should inlcude no identifiable information or PII. 
 - The prompt must be written **in first person**, as if typed directly by the synthetic person.    
 - Keep the writing concise, coherent, and consistent with the tone of the “Content.”  
 - Do not include any text other than the single generated prompt.
 - The final output should be a prompt directed towards an LLM.
-- the prompt be something the person may actually ask given their context, but does not identify them. 
-- The final output should stay around 2-3 sentences.
+- The final output should be 1-3 sentences.
 
 ---
 

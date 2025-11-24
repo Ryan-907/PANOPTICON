@@ -133,7 +133,6 @@ for uid in ids: #Skipping 1 as profile one is used to provide example for one sh
                     if i == p[0]:
                         pii.extend(p)
 
-            print(f"PII List: {pii}\n")
             sub_scenario = choice(scenarios[scenario])
             print(f"subscenario: {sub_scenario}\n")
             instruction = template.render(category=scenario, subcategory=sub_scenario, pii=pii)
