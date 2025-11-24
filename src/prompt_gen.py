@@ -147,6 +147,7 @@ for uid in ids: #Skipping 1 as profile one is used to provide example for one sh
         output = output[0]['generated_text']
 
         print(output)
+        print('\n')
 
         matched_pii = match_pii(output, full_pii)
         print(matched_pii)
