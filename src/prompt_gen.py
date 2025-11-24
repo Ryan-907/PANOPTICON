@@ -39,9 +39,9 @@ scenarios = {
     ],
 
     "Digital Identity": [
-        "Social media bio rewrite",
-        "About-me text for website",
-        "Personal branding paragraph"
+        "Social media post",
+        "Email help",
+        "Advertise professional services"
     ],
 
     "Benign": [
@@ -123,6 +123,7 @@ for uid in ids: #Skipping 1 as profile one is used to provide example for one sh
     pool = 0
     for scenario in scenarios.keys():
         if scenario == 'Benign':
+            print(f'{scenario}\n')
             instruction = benign_system_prompt
         else:
             pii_list = pii_pools[pool]
