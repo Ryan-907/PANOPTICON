@@ -66,6 +66,7 @@ MODEL ="meta-llama/Llama-3.1-8B-Instruct"
 current_directory = Path(__file__).parent
 system_prompt = current_directory.parent / 'prompts' / 'experimental.md'
 benign_system_prompt = current_directory.parent / 'prompts' / 'benign_prompt.md'
+response_system_prompt = current_directory.parent / 'prompts' / 'response.md'
 
 with open(system_prompt, 'r', encoding='utf-8') as f:
     instruction_md = f.read()
@@ -73,14 +74,17 @@ with open(system_prompt, 'r', encoding='utf-8') as f:
 with open(benign_system_prompt, 'r', encoding='utf-8') as b:
     benign_instruction_md = b.read()
 
+with open(response_system_prompt, 'r', encoding='utf-8') as r:
+    response_md = r.read()
+
 template = Template(instruction_md)
 
 #setting up model and generation
 model = AutoModelForCausalLM.from_pretrained(MODEL, dtype=torch.bfloat16, device_map='auto', low_cpu_mem_usage=True)
 tokenizer = AutoTokenizer.from_pretrained(MODEL)
 
-generator = pipeline("text-generation", model=model, tokenizer=tokenizer, return_full_text=False, do_sample=True,temperature=.4, top_p=0.9, max_new_tokens=200)
-
+prompt_generator = pipeline("text-generation", model=model, tokenizer=tokenizer, return_full_text=False, do_sample=True,temperature=.4, top_p=0.9, max_new_tokens=200)
+response_generator = pipeline("text-generation", model=model, tokenizer=tokenizer, return_full_text=False, do_sample=True, temperature=.4, top_p=.9, max_new_tokens=600)
 
 #Setting up datasets
 pano = Panorama()
@@ -142,11 +146,11 @@ for uid in ids: #Skipping 1 as profile one is used to provide example for one sh
 
         prompts = [{"role":"system", "content": f'{instruction}'}, {'role':'user', 'content': f'Article: {article} Content: {content}.'}]
    
-        output = generator(prompts, truncation=True)
+        output = prompt_generator(prompts, truncation=True)
         output = output[0]['generated_text']
 
-        responses = [{'role':'user', 'content':f'{output}'}]
-        response = generator(responses, truncation=True)
+        responses = [{'role':'system', 'content':f'{response_md}'}, {'role':'user', 'content':f'{output}'}]
+        response = response_generator(responses, truncation=True)
         response = response[0]['generated_text']
 
         print(output)
@@ -157,7 +161,7 @@ for uid in ids: #Skipping 1 as profile one is used to provide example for one sh
 
         print(response)
         print('\n')
-        
+
         r_matched_pii = match_pii(response, full_pii)
         print(r_matched_pii)
         print('\n')
