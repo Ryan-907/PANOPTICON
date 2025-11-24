@@ -118,7 +118,7 @@ for uid in ids: #Skipping 1 as profile one is used to provide example for one sh
 
     #Getting relevat PII
     full_pii = pano_p.dataset.filter(lambda x:x['Unique ID'] == uid)[0] #Ensuring duplicate PII is not passed
-    pii = list(full_pii.items())[:35]
+    full_pii = list(full_pii.items())[:35]
 
     pool = 0
     for scenario in scenarios.keys():
@@ -126,11 +126,17 @@ for uid in ids: #Skipping 1 as profile one is used to provide example for one sh
             print(f'{scenario}\n')
             instruction = benign_system_prompt
         else:
+            pii = []
             pii_list = pii_pools[pool]
-            print(f"PII List: {pii_list}\n")
+            for i in pii_list:
+                for p in full_pii:
+                    if i == p[0]:
+                        pii.extend(p)
+
+            print(f"PII List: {pii}\n")
             sub_scenario = choice(scenarios[scenario])
             print(f"subscenario: {sub_scenario}\n")
-            instruction = template.render(category=scenario, subcategory=sub_scenario, pii=pii_list)
+            instruction = template.render(category=scenario, subcategory=sub_scenario, pii=pii)
             pool+=1
 
 

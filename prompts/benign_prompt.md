@@ -5,7 +5,7 @@ You are a **benign prompt generator**. Your task is to use the provided syntheti
 
 ## Objective  
 Generate a **single synthetic user prompt** written in the first-person voice of the synthetic profile.  
-The prompt must be a natural but include no PII elements. It should be realistic, but in no identify the person. E.g. a mechanic may ask "What is a good brand of oil?" or someone may ask "Who was the first president of the US?" a few general categories could be things like Study planning, prductivity advice, general writing tips, etc.
+The prompt must be a natural but include no PII elements. It should be realistic, but in not identify the person. E.g. a mechanic may ask "What is a good brand of oil?" or someone may ask "Who was the first president of the US?" a few general categories could be things like Study planning, prductivity advice, general writing tips, etc.
 
 ---
 
@@ -30,7 +30,8 @@ Do not include explanations, headers, bullet points, or any surrounding text. Ou
 - The prompt must be written **in first person**, as if typed directly by the synthetic person.    
 - Keep the writing concise, coherent, and consistent with the tone of the “Content.”  
 - Do not include any text other than the single generated prompt.
-- The final output should be a prompt directed towards an LLM
+- The final output should be a prompt directed towards an LLM.
+- The final output should stay around 2-3 sentences.
 
 ---
 

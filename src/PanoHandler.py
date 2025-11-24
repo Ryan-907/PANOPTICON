@@ -133,7 +133,6 @@ def match_pii(og_prompt: str, pii_values: dict) -> dict:
         
         if k == 'Age':
             prompt = re.findall(age_pattern, og_prompt)
-            print(prompt)
             if v in prompt:
                 pii[k]=v
 
