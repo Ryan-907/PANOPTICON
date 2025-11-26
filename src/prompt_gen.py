@@ -74,8 +74,8 @@ with open(system_prompt, 'r', encoding='utf-8') as f:
 with open(benign_system_prompt, 'r', encoding='utf-8') as b:
     benign_instruction_md = b.read()
 
-with open(response_system_prompt, 'r', encoding='utf-8') as r:
-    response_md = r.read()
+'''with open(response_system_prompt, 'r', encoding='utf-8') as r:
+    response_md = r.read()''' #Uncommenting this line, 153-156, and adding two columnds to the dict will enable response pairs
 
 template = Template(instruction_md)
 
@@ -151,26 +151,22 @@ for uid in ids[:50]:
         prompt = prompt[0]['generated_text']
 
         #Generate LLM output
-        responses = [{'role':'system', 'content':f'{response_md}'}, {'role':'user', 'content':f'{prompt}'}]
-        response = generator(responses, truncation=True, max_new_tokens=600)
-        response = response[0]['generated_text']
+        #responses = [{'role':'system', 'content':f'{response_md}'}, {'role':'user', 'content':f'{prompt}'}]
+        #response = generator(responses, truncation=True, max_new_tokens=600)
+        #response = response[0]['generated_text']
 
 
         prompt_pii = match_pii(prompt, full_pii)
-        print(prompt_pii)
-        response_pii = match_pii(response, full_pii)
  
         entry = {'ID':uid,
                  'Category': category,
                  'Scenario': scenario,
                  'Prompt': prompt,
                  'PromptPII': prompt_pii,
-                 'Response':response,
-                 'ResponsePII':response_pii,
                  'Content':content}
 
         entries.append(entry)
-        del prompt, response
+        del prompt
 
 t2 = time()
 
