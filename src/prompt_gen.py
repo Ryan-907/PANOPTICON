@@ -2,12 +2,14 @@ from pathlib import Path
 from transformers import AutoTokenizer, AutoModelForCausalLM, pipeline
 from PanoHandler import Panorama, PanoPlus, match_pii
 import torch
-from random import sample, choice, randint
+from random import sample, choice
 from jinja2 import Template
+from datasets import Dataset
+from time import time
 
-#Variation in scenarios for promp generation
-
-scenarios = {
+entries = []
+#Variation in scenarios for prompt generation. 7 Categories, 18 usable scenarios
+CATEGORIES = {
     "Professional": [
         "Resume/CV",
         "HR communication",
@@ -45,9 +47,7 @@ scenarios = {
     ],
 
     "Benign": [
-        "Study/work planning",
-        "Productivity advice",
-        "General writing tips"
+        "nothing here"
     ]
 }
 
@@ -64,7 +64,7 @@ MODEL ="meta-llama/Llama-3.1-8B-Instruct"
 
 #Accessing prompt
 current_directory = Path(__file__).parent
-system_prompt = current_directory.parent / 'prompts' / 'experimental.md'
+system_prompt = current_directory.parent / 'prompts' / 'gen_prompts.md'
 benign_system_prompt = current_directory.parent / 'prompts' / 'benign_prompt.md'
 response_system_prompt = current_directory.parent / 'prompts' / 'response.md'
 
@@ -91,14 +91,9 @@ pano = Panorama()
 pano_p = PanoPlus()
 ids = pano_p.get_ids() #list of unique IDs
 
-
-#Main loop
-for uid in ids: #Skipping 1 as profile one is used to provide example for one shot in prompt
-    data = []
+def gen_content(uid):
+    data =  []
     content = []
-
-    #Filtering by uid to get appropriate information associated with each profile
-    article = pano.articles.filter(lambda x:x['id'] == uid)
     social = pano.socials.filter(lambda x:x['id'] == uid)
     forums = pano.forums.filter(lambda x:x['id'] == uid)
     reviews = pano.reviews.filter(lambda x:x['id'] == uid)
@@ -114,58 +109,79 @@ for uid in ids: #Skipping 1 as profile one is used to provide example for one sh
     for d in data:
         for post in d:
             content.append(post)
-    content = sample(content, 10)
+    return sample(content, 10) #Getting 10 random sample writings for tone guidance
 
+#Main loop
+t1 = time()
+for uid in ids[:50]: #Skipping 1 as profile one is used to provide example for one shot in prompt
 
-    #Getting text data to pass
+    #Getting article
+    article = pano.articles.filter(lambda x:x['id'] == uid)
     article = article['text'][0] #Ensuring duplicate articles are not passed
+    content = gen_content(uid)
+
 
     #Getting relevat PII
     full_pii = pano_p.dataset.filter(lambda x:x['Unique ID'] == uid)[0] #Ensuring duplicate PII is not passed
-    l_pii = list(full_pii.items())[:35]
+    l_pii = list(full_pii.items())[:35] #Listi of PII tuples for iteration and removing redundancy from "complete info"
 
     pool = 0
-    for scenario in scenarios.keys():
-        if scenario == 'Benign':
-            print(f'{scenario}\n')
+    for category in CATEGORIES.keys():
+        if category == 'Benign':
             instruction = benign_instruction_md
+            scenario = 'Benign'
         else:
             pii = []
             pii_list = pii_pools[pool]
             for i in pii_list:
                 for p in l_pii:
                     if i == p[0]:
-                        pii.extend(p)
+                        pii.extend(p) #List of unique PII associated with the uid
 
-            sub_scenario = choice(scenarios[scenario])
-            print(f"subscenario: {sub_scenario}\n")
-            instruction = template.render(category=scenario, subcategory=sub_scenario, pii=pii)
-            pool+=1
+            scenario = choice(CATEGORIES[category]) #Selecting a scenario from list of categories
+            instruction = template.render(category=category, scenario=scenario, pii=pii)
+            pool+=1 #Next category
 
 
 
         prompts = [{"role":"system", "content": f'{instruction}'}, {'role':'user', 'content': f'Article: {article} Content: {content}.'}]
-   
-        output = generator(prompts, truncation=True, max_new_tokens=200)
-        output = output[0]['generated_text']
 
-        responses = [{'role':'system', 'content':f'{response_md}'}, {'role':'user', 'content':f'{output}'}]
+        #Generate prompt
+        prompt = generator(prompts, truncation=True, max_new_tokens=200)
+        prompt = prompt[0]['generated_text']
+
+        #Generate LLM output
+        responses = [{'role':'system', 'content':f'{response_md}'}, {'role':'user', 'content':f'{prompt}'}]
         response = generator(responses, truncation=True, max_new_tokens=600)
         response = response[0]['generated_text']
 
-        print(output)
-        print('\n')
 
-        matched_pii = match_pii(output, full_pii)
-        print(matched_pii)
+        prompt_pii = match_pii(prompt, full_pii)
+        response_pii = match_pii(response, full_pii)
+ 
+        entry = {'ID':uid,
+                 'Category': category,
+                 'Scenario': scenario,
+                 'Prompt': prompt,
+                 'PromptPII': prompt_pii,
+                 'Response':response,
+                 'ResponsePII':response_pii,
+                 'Content':content}
 
-        print(response)
-        print('\n')
-
-        r_matched_pii = match_pii(response, full_pii)
-        print(r_matched_pii)
-        print('\n')
-
-        del output
+        entries.append(entry)
+        del prompt, response
         torch.cuda.empty_cache()
-    input()
+        
+t2 = time()
+
+
+elapsed = t2 - t1
+per_uid = elapsed / len(ids[:50])
+
+print(f"Total time for {len(ids[:50])} UIDs: {elapsed:.2f} seconds")
+print(f"Average per UID: {per_uid:.2f} seconds")
+print(f"Estimated time for 10k UIDs: {per_uid * 10000 / 3600:.2f} hours")
+
+dataset = Dataset.from_list(entries)
+dataset.save_to_disk("PANOPTICON")
+dataset.to_json('PANOPTICON.JSON', lines=True)
