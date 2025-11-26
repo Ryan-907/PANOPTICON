@@ -113,7 +113,7 @@ def gen_content(uid):
 
 #Main loop
 t1 = time()
-for uid in ids[:50]: #Skipping 1 as profile one is used to provide example for one shot in prompt
+for uid in ids[:50]: 
 
     #Getting article
     article = pano.articles.filter(lambda x:x['id'] == uid)
@@ -157,6 +157,7 @@ for uid in ids[:50]: #Skipping 1 as profile one is used to provide example for o
 
 
         prompt_pii = match_pii(prompt, full_pii)
+        print(prompt_pii)
         response_pii = match_pii(response, full_pii)
  
         entry = {'ID':uid,
@@ -170,8 +171,7 @@ for uid in ids[:50]: #Skipping 1 as profile one is used to provide example for o
 
         entries.append(entry)
         del prompt, response
-        torch.cuda.empty_cache()
-        
+
 t2 = time()
 
 
