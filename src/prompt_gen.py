@@ -6,6 +6,13 @@ from random import sample, choice
 from jinja2 import Template
 from datasets import Dataset
 from time import time
+import argparse as ap
+import math
+
+parser = ap.ArgumentParser()
+parser.add_argument("--num-chunks", type=int, required=True)
+parser.add_argument("--chunk-index", type=int, required=True)
+args = parser.parse_args()
 
 entries = []
 #Variation in scenarios for prompt generation. 7 Categories, 18 usable scenarios
@@ -91,6 +98,15 @@ pano = Panorama()
 pano_p = PanoPlus()
 ids = pano_p.get_ids() #list of unique IDs
 
+num_chunks = args.num_chunks
+chunk_index = args.chunk_index
+
+n = len(ids)
+chunk_size = math.ceil(n / num_chunks)
+
+start = chunk_index * chunk_size
+end = min(start + chunk_size, n)
+
 def gen_content(uid):
     data =  []
     content = []
@@ -112,8 +128,7 @@ def gen_content(uid):
     return sample(content, 10) #Getting 10 random sample writings for tone guidance
 
 #Main loop
-t1 = time()
-for uid in ids[:50]: 
+for uid in ids[start:end]: 
 
     #Getting article
     article = pano.articles.filter(lambda x:x['id'] == uid)
@@ -168,16 +183,7 @@ for uid in ids[:50]:
         entries.append(entry)
         del prompt
 
-t2 = time()
-
-
-elapsed = t2 - t1
-per_uid = elapsed / len(ids[:50])
-
-print(f"Total time for {len(ids[:50])} UIDs: {elapsed:.2f} seconds")
-print(f"Average per UID: {per_uid:.2f} seconds")
-print(f"Estimated time for 10k UIDs: {per_uid * 10000 / 3600:.2f} hours")
 
 dataset = Dataset.from_list(entries)
-dataset.save_to_disk("PANOPTICON")
-dataset.to_json('PANOPTICON.JSON', lines=True)
+dataset.save_to_disk(f"PANOPTICON_{chunk_index}")
+dataset.to_json(f'PANOPTICON_{chunk_index}.JSON', lines=True)
