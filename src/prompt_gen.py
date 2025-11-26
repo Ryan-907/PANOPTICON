@@ -147,7 +147,7 @@ for uid in ids[:50]:
         prompts = [{"role":"system", "content": f'{instruction}'}, {'role':'user', 'content': f'Article: {article} Content: {content}.'}]
 
         #Generate prompt
-        prompt = generator(prompts, truncation=True, max_new_tokens=200)
+        prompt = generator(prompts, truncation=True, max_new_tokens=120)
         prompt = prompt[0]['generated_text']
 
         #Generate LLM output
