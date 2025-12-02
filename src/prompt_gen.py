@@ -125,7 +125,7 @@ def gen_content(uid):
     for d in data:
         for post in d:
             content.append(post)
-    return sample(content, 10) #Getting 10 random sample writings for tone guidance
+    return sample(content, min(len(content), 6)) #Getting 6 or fewer random sample writings for tone guidance
 
 #Main loop
 for uid in ids[start:end]: 

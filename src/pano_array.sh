@@ -4,7 +4,7 @@
 #SBATCH --gpus=2
 #SBATCH --mem=200G
 #SBATCH --ntasks-per-node=1
-#SBATCH --time=10:00:00
+#SBATCH --time=20:00:00
 #SBATCH --array=0-6   # 7 jobs: 0,1,2,3,4,5,6
 
 
