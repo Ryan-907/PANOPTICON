@@ -8,202 +8,9 @@ from peft import PeftModel
 from datasets import load_from_disk 
 import re
 from ast import literal_eval
+from utils.PanoHandler import match_pii
+from datasets import load_from_disk
 
-
-default_pattern = re.compile(r"[A-Za-z0-9'_\/\\+-]+")
-social_media_pattern = re.compile(r"[A-Za-z0-9._@]+")
-address_pattern = re.compile(r"[A-Za-z0-9']+")
-fin_pattern = re.compile(r'[0-9$£€₹₱SR]+(?:\.\d+)')
-age_pattern = re.compile(r'[0-9]+')
-child_map = {'1': 'one', '2': 'two', '3': 'three', '4': 'four'}
-
-
-def match_pii(og_prompt: str, pii_values: dict) -> dict:
-    """
-    Robust version that:
-      - normalizes PII values to strings where appropriate
-      - guards against None / non-string values
-      - fixes 'Children Count' branch using a defined prompt token list
-    """
-    pii = {}
-
-    # Pre-tokenize prompt for patterns we reuse
-    prompt_tokens_default = re.findall(default_pattern, og_prompt)
-    prompt_tokens_default_lower = [t.lower() for t in prompt_tokens_default]
-    prompt_tokens_address = re.findall(address_pattern, og_prompt)
-    prompt_tokens_age = re.findall(age_pattern, og_prompt)
-
-    for k, v in pii_values.items():
-        # Skip empty / None outright
-        if v is None or v == "":
-            continue
-
-        # Normalize to string for regex/text checks
-        # (this also handles ints like Age, Children Count, etc.)
-        v_str = str(v)
-
-        # ----- AGE -----
-        if k == 'Age':
-            # age_pattern on og_prompt gives tokens like ['35', '1987', ...]
-            if v_str in prompt_tokens_age:
-                pii[k] = v_str
-
-        # ----- FINANCIAL (Annual Salary, Net Worth) -----
-        elif k in ["Annual Salary", "Net Worth"]:
-            prompt_clean = og_prompt.replace(',', '')
-            fin_tokens = re.findall(fin_pattern, prompt_clean)
-            if v_str.replace(',', '') in fin_tokens:
-                pii[k] = v_str
-
-        # ----- CHILDREN COUNT -----
-        elif k in ['Children Count']:
-            # v_str should be like '0', '1', '2', etc.
-            if v_str == '0':
-                # nothing to match
-                continue
-
-            # Check for 'child' in the prompt (singular/plural)
-            if 'child' in og_prompt.lower() or 'children' in og_prompt.lower():
-                # also check word-form mapping (one, two, three, four)
-                word = child_map.get(v_str)
-                if word and (word in prompt_tokens_default_lower):
-                    pii[k] = v_str
-                else:
-                    # still record count if we see generic child mention
-                    pii[k] = v_str
-            else:
-                # optionally also use word-form only
-                word = child_map.get(v_str)
-                if word and (word in prompt_tokens_default_lower):
-                    pii[k] = v_str
-
-        # ----- ADDRESS -----
-        elif k in ['Address']:
-            # v_str might be a full address string
-            val = ''
-            check_tokens = re.findall(address_pattern, v_str)
-            for token in check_tokens:
-                if token in prompt_tokens_address:
-                    val += f'{token} '
-            val = val.rstrip()
-            if val:
-                pii[k] = val
-
-        # ----- SOCIAL MEDIA HANDLES -----
-        elif k in ['Social Media Handles']:
-            if v_str == '{}' or v_str.strip() == '':
-                continue
-
-            # v might already be a dict or a stringified dict
-            if isinstance(v, dict):
-                handles = v
-            else:
-                try:
-                    handles = literal_eval(v_str)
-                    if not isinstance(handles, dict):
-                        continue
-                except Exception:
-                    continue
-
-            for platform, handle in handles.items():
-                if handle and str(handle) in og_prompt:
-                    pii[platform] = str(handle)
-
-        # ----- SIMPLE STRING-IN-PROMPT KEYS -----
-        elif k in [
-            'Education Info', 'Phone Number', "Work Phone",
-            "Emergency Contact Phone", "Email Address", "Work Email", "Employer"
-        ]:
-            if v_str in og_prompt:
-                pii[k] = v_str
-
-        # ----- DEFAULT / NAME-LIKE FIELDS -----
-        else:
-            # Use tokenized/default pattern
-            s = v_str.split()
-            if len(s) > 1:
-                first, second = s[0], s[1]
-                # full-name or first+last presence
-                if ((first in prompt_tokens_default and second in prompt_tokens_default) or
-                    (first.lower() in prompt_tokens_default_lower and second.lower() in prompt_tokens_default_lower)):
-                    pii[k] = v_str
-                # only first name appears
-                elif (first in prompt_tokens_default or first.lower() in prompt_tokens_default_lower):
-                    pii[k] = first
-            else:
-                # single-token field
-                token = s[0]
-                if (token in prompt_tokens_default) or (token.lower() in prompt_tokens_default_lower):
-                    pii[k] = v_str
-
-    return pii
-
-def parse_pii_values(raw) -> dict:
-    """
-    Robustly convert the PANOPTICON PromptPII field into a dict.
-    Handles:
-      - already a dict
-      - JSON string
-      - Python dict repr (via literal_eval)
-      - None / empty string
-    """
-    if raw is None:
-        return {}
-    if isinstance(raw, dict):
-        return raw
-    if isinstance(raw, str):
-        s = raw.strip()
-        if not s:
-            return {}
-        # try JSON first
-        try:
-            val = json.loads(s)
-            if isinstance(val, dict):
-                return val
-        except json.JSONDecodeError:
-            pass
-        # then Python repr
-        try:
-            val = ast.literal_eval(s)
-            if isinstance(val, dict):
-                return val
-        except Exception:
-            pass
-        return {}
-    # anything else → ignore
-    return {}
-    
-def pii_overlap_metrics(gt_pii: dict, pred_pii: dict) -> dict:
-    """
-    Compare ground-truth PII (from the original prompt) to PII
-    detected in the reconstructed prompt.
-
-    We treat (key, value) pairs as the unit of comparison.
-    """
-    gt_items = set(gt_pii.items())
-    pred_items = set(pred_pii.items())
-
-    intersection = gt_items & pred_items
-
-    gt_count = len(gt_items)
-    pred_count = len(pred_items)
-    match_count = len(intersection)
-
-    precision = match_count / pred_count if pred_count > 0 else (1.0 if gt_count == 0 else 0.0)
-    recall    = match_count / gt_count   if gt_count   > 0 else 1.0
-    f1 = (2 * precision * recall / (precision + recall)) if (precision + recall) > 0 else 0.0
-
-    return {
-        "gt_count": gt_count,
-        "pred_count": pred_count,
-        "match_count": match_count,
-        "precision": precision,
-        "recall": recall,
-        "f1": f1,
-        "gt_items": gt_items,
-        "pred_items": pred_items,
-        "matched_items": intersection,
-    }
 
 def top_k_top_p_filtering(
     logits: torch.Tensor,
@@ -291,7 +98,8 @@ class LargeLangModel:
                 self.model.gradient_checkpointing_enable()
             if hasattr(self.model, "config"):
                 self.model.config.use_cache = False
-
+        
+        #If LoRA model is provided
         else:
             num_gpus = torch.cuda.device_count()
 
@@ -503,7 +311,7 @@ class Inversion:
         filter_top_p=1.0,
         next_ids=None,
         top_k=None,
-        **kwargs,              # <-- NEW: ignore extra args like layer_id
+        **kwargs, 
     ):
         device = self._device
 
@@ -677,12 +485,11 @@ class Inversion:
         ret_tokens = self.tokenizer.decode(ret_list[1:])
 
         return acc, ret_tokens, ret_list
+    
 if __name__=='__main__':
     PANOPTICON_PATH = "../PANOPTICON"
     TEXT_FIELD = "Prompt"
     MAX_SAMPLES = 1000   # <-- change to however many you want
-
-    from datasets import load_from_disk
     pan_ds = load_from_disk(PANOPTICON_PATH)
 
     lm = LargeLangModel(model_name="meta-llama/Llama-2-7b-chat-hf")
