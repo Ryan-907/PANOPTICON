@@ -618,7 +618,7 @@ if __name__=='__main__':
         total_acc += acc
 
         count += 1
-
+        print(f'{count} of {MAX_SAMPLES} done')
     # compute averages
     # avg over samples where GT PII existed
     avg_precision = total_prec / pii_count if pii_count > 0 else 0.0
