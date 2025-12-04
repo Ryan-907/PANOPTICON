@@ -1,6 +1,6 @@
 from pathlib import Path
 from transformers import AutoTokenizer, AutoModelForCausalLM, pipeline
-from PanoHandler import Panorama, PanoPlus, match_pii
+from utils.PanoHandler import Panorama, PanoPlus, match_pii
 import torch
 from random import sample, choice
 from jinja2 import Template

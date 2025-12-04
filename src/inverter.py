@@ -8,7 +8,7 @@ from peft import PeftModel
 from datasets import load_from_disk 
 import re
 from ast import literal_eval
-from utils.PanoHandler import match_pii
+from utils.PanoHandler import PanoPlus, match_pii
 from datasets import load_from_disk
 
 
@@ -486,13 +486,69 @@ class Inversion:
 
         return acc, ret_tokens, ret_list
     
+def pii_to_set(pii_obj) -> set:
+    """
+    Convert a PromptPII-style object into a set of (field, value) pairs
+    for easy comparison.
+
+    Handles:
+      - dicts
+      - values that might be lists
+    """
+    if pii_obj is None:
+        return set()
+
+    s = set()
+    if isinstance(pii_obj, dict):
+        items = pii_obj.items()
+    else:
+        # if you stored it as a string or something else, bail gracefully
+        return set()
+
+    for key, val in items:
+        if val is None:
+            continue
+        if isinstance(val, list):
+            for v in val:
+                if v is not None:
+                    s.add((str(key), str(v).strip().lower()))
+        else:
+            s.add((str(key), str(val).strip().lower()))
+
+    return s
+
+
+def compute_pii_metrics(gt_pii, guess_pii):
+    """
+    Compute precision/recall/F1 for PII reconstruction.
+
+    gt_pii, guess_pii: PromptPII-style dicts (ground truth and guessed).
+    """
+    gt_set    = pii_to_set(gt_pii)
+    guess_set = pii_to_set(guess_pii)
+
+    if not gt_set and not guess_set:
+        return 0.0, 0.0, 0.0  # nothing to measure
+
+    tp = len(gt_set & guess_set)
+    fp = len(guess_set - gt_set)
+    fn = len(gt_set - guess_set)
+
+    precision = tp / (tp + fp) if (tp + fp) > 0 else 0.0
+    recall    = tp / (tp + fn) if (tp + fn) > 0 else 0.0
+    f1        = (2 * precision * recall / (precision + recall)
+                 if (precision + recall) > 0 else 0.0)
+
+    return precision, recall, f1
 if __name__=='__main__':
     PANOPTICON_PATH = "../PANOPTICON"
-    TEXT_FIELD = "Prompt"
     MAX_SAMPLES = 1000   # <-- change to however many you want
-    pan_ds = load_from_disk(PANOPTICON_PATH)
 
-    lm = LargeLangModel(model_name="meta-llama/Llama-2-7b-chat-hf")
+    pan_ds = load_from_disk(PANOPTICON_PATH)
+    pano_p = PanoPlus()
+    panop_id = pano_p.get_ids()  # full PII per profile ID
+
+    lm = LargeLangModel(model_name="meta-llama/Llama-3.1-8B-Instruct")
     inf = Inference(model=lm.model, tokenizer=lm.tokenizer)
     inv = Inversion(model=lm.model, tokenizer=lm.tokenizer)
 
@@ -502,20 +558,22 @@ if __name__=='__main__':
     total_prec = 0.0
     total_rec  = 0.0
     total_f1   = 0.0
-    total_acc  = 0.0
+    total_acc  = 0.0   # token-level accuracy from inv.invert (if that's what `acc` is)
 
-    count = 0
+    count = 0          # total samples we included in the averages
+    pii_count = 0      # how many of those actually had GT PII (optional, but useful)
 
     for i, row in enumerate(pan_ds):
         if count >= MAX_SAMPLES:
             break
 
-        og_prompt = row[TEXT_FIELD]
+        gt_prompt     = row['Prompt']
+        gt_prompt_pii = row['PromptPII']   # ground truth PII that was actually in the prompt
 
         # capture hidden states
         ids, mask, embeds, hiddens = inf.capture(
             layer_id=layer_id,
-            prompt=og_prompt
+            prompt=gt_prompt
         )
 
         # pick last valid [1, seq, dim] hidden
@@ -537,28 +595,40 @@ if __name__=='__main__':
             refine=False
         )
 
-        # PII analysis
-        pii_values = parse_pii_values(row.get("PromptPII", {}))
-        gt_pii   = match_pii(og_prompt, pii_values)
-        pred_pii = match_pii(ret_tokens, pii_values)
-        pii_stats = pii_overlap_metrics(gt_pii, pred_pii)
+        guess_prompt = ret_tokens
 
-        # accumulate
-        total_prec += pii_stats["precision"]
-        total_rec  += pii_stats["recall"]
-        total_f1   += pii_stats["f1"]
-        total_acc  += acc
+        # PII matched in the reconstructed prompt
+        # panop_id[row['ID']] should be the full PII record for this profile
+        guess_prompt_pii = match_pii(guess_prompt, panop_id[row['ID']])
+
+        # --- compute PII metrics for this example ---
+        prec, rec, f1 = compute_pii_metrics(gt_prompt_pii, guess_prompt_pii)
+        gt_set = pii_to_set(gt_prompt_pii)
+
+        # Only count toward PII metrics if there actually *was* PII in the GT prompt
+        if gt_set:
+            total_prec += prec
+            total_rec  += rec
+            total_f1   += f1
+            pii_count  += 1
+
+        # token-level accuracy from inversion (if you care about overall textual accuracy)
+        total_acc += acc
 
         count += 1
 
     # compute averages
-    avg_precision = total_prec / count if count > 0 else 0
-    avg_recall    = total_rec  / count if count > 0 else 0
-    avg_f1        = total_f1   / count if count > 0 else 0
-    avg_acc       = total_acc  / count if count > 0 else 0
+    # avg over samples where GT PII existed
+    avg_precision = total_prec / pii_count if pii_count > 0 else 0.0
+    avg_recall    = total_rec  / pii_count if pii_count > 0 else 0.0
+    avg_f1        = total_f1   / pii_count if pii_count > 0 else 0.0
+
+    # token-level accuracy: averaged over all processed samples
+    avg_acc       = total_acc  / count     if count > 0 else 0.0
 
     summary = {
-        "samples": count,
+        "samples_processed": count,
+        "samples_with_pii": pii_count,
         "avg_precision": avg_precision,
         "avg_recall": avg_recall,
         "avg_f1": avg_f1,
