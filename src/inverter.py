@@ -570,6 +570,8 @@ if __name__=='__main__':
         gt_prompt     = row['Prompt']
         gt_prompt_pii = row['PromptPII']   # ground truth PII that was actually in the prompt
 
+        full_pii = pano_p.dataset.filter(lambda x:x['Unique ID'] == row['ID'])[0]
+
         # capture hidden states
         ids, mask, embeds, hiddens = inf.capture(
             layer_id=layer_id,
@@ -599,7 +601,7 @@ if __name__=='__main__':
 
         # PII matched in the reconstructed prompt
         # panop_id[row['ID']] should be the full PII record for this profile
-        guess_prompt_pii = match_pii(guess_prompt, panop_id[row['ID']])
+        guess_prompt_pii = match_pii(guess_prompt, full_pii)
 
         # --- compute PII metrics for this example ---
         prec, rec, f1 = compute_pii_metrics(gt_prompt_pii, guess_prompt_pii)
