@@ -541,7 +541,7 @@ def compute_pii_metrics(gt_pii, guess_pii):
 
     return precision, recall, f1
 if __name__=='__main__':
-    PANOPTICON_PATH = "../PANOPTICON"
+    PANOPTICON_PATH = "../PANOPTICON_v1.2"
     MAX_SAMPLES = 1000   # <-- change to however many you want
 
     pan_ds = load_from_disk(PANOPTICON_PATH)
