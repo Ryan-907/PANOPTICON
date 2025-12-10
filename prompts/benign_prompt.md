@@ -23,7 +23,7 @@ Under no circumstances may you copy, paraphrase, or reference ANY concrete facts
 ## Output Format
 Output **only** one thing:
 
-- A single, coherent, first-person prompt (1–3 sentences) asking a generic, non-identifying question.
+- A single, coherent, first-person prompt (1–3 sentences) asking a generic, non-identifying question about {{ scenario }}.
 
 Do NOT include explanations, prefaces, bullet points, or any surrounding text.
 
@@ -56,4 +56,4 @@ If a detail could *possibly* identify someone, **do not include it**.
 ---
 
 ## Task
-Using only the tone—not the facts—from the Article and Content, generate a generic, harmless, non-identifying prompt directed toward an LLM.
+Using only the tone—not the facts—from the Article and Content, generate a generic, harmless, non-identifying prompt directed toward an LLM about **{{ scenario }}**.

@@ -540,6 +540,7 @@ def compute_pii_metrics(gt_pii, guess_pii):
                  if (precision + recall) > 0 else 0.0)
 
     return precision, recall, f1
+
 if __name__=='__main__':
     PANOPTICON_PATH = "../PANOPTICON_v1.2"
     MAX_SAMPLES = 1000   # <-- change to however many you want
@@ -562,7 +563,7 @@ if __name__=='__main__':
 
     count = 0          # total samples we included in the averages
     pii_count = 0      # how many of those actually had GT PII (optional, but useful)
-
+   
     for i, row in enumerate(pan_ds):
         if count >= MAX_SAMPLES:
             break
@@ -618,7 +619,7 @@ if __name__=='__main__':
         total_acc += acc
 
         count += 1
-        print(f'{count} of {MAX_SAMPLES} done')
+
     # compute averages
     # avg over samples where GT PII existed
     avg_precision = total_prec / pii_count if pii_count > 0 else 0.0

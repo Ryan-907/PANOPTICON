@@ -31,9 +31,9 @@ Do not include explanations, headers, bullet points, or any surrounding text. Ou
 - The prompt must be written **in first person**, as if typed directly by the synthetic person.  
 - It must clearly be a **request for assistance** (e.g., drafting, revising, preparing, summarizing), not a biography or third-person description.  
 - It must pertain specifically to the area of **{{ category }}**, and more precisely **{{ scenario }}**.  
-- The PII values in **{{ pii }}** must be **smoothly integrated** into natural sentences (e.g., “I’ve worked at X company”), not listed or formatted as key:value pairs. The goal is not maximal PII, but natural PII. 
-- Do **not** begin with phrases such as **“As I…”**, **“As I approach…”**, or **“As I get ready…”**.  
-- Keep the writing concise, coherent, and consistent with the tone of the “Content.”  
+- The PII values in **{{ pii }}** must be **smoothly integrated** into natural sentences, not listed or formatted as key:value pairs. The goal is not maximal PII, but natural PII. 
+- Do **not** begin with phrases such as **“As I…”**, **“As I approach…”**, **“As I get ready…"**, **"I am seeking**, etc. be creative with prompt framing based on how you percieve the individual based on the content.
+- Keep the writing concise, coherent, and consistent with the tone of “Content.”  
 - Do not include any text other than the single generated prompt.
 - The final output should be a prompt directed towards an LLM
 
