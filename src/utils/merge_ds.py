@@ -3,7 +3,7 @@ import os, re
 
 # 1) Collect shard dirs: PANOPTICON_0, PANOPTICON_1, ..., PANOPTICON_6
 prefix = "PANOPTICON_"
-dirs = [d for d in os.listdir(".") if re.fullmatch(rf"{prefix}\d+", d)]
+dirs = [d for d in os.listdir("..") if re.fullmatch(rf"{prefix}\d+", d)]
 dirs = sorted(dirs, key=lambda d: int(d.split("_")[1]))
 
 print("Found shards:", dirs)

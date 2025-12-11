@@ -553,7 +553,7 @@ if __name__=='__main__':
     inf = Inference(model=lm.model, tokenizer=lm.tokenizer)
     inv = Inversion(model=lm.model, tokenizer=lm.tokenizer)
 
-    layer_id = 12
+    layer_id = lm.n_layers - 1
 
     # Running totals
     total_prec = 0.0
@@ -594,7 +594,7 @@ if __name__=='__main__':
             total_input_ids=ids,
             invert_method="cosine",
             filter_nonascii=True,
-            top_k_cos=10,
+            top_k_cos=20,
             refine=False
         )
 
