@@ -13,8 +13,8 @@ import nltk
 from nltk.corpus import stopwords
 
 BASE_DIR = "PANOPTICON"
-DATASET_PATH = os.path.join(BASE_DIR, "PANOPTICON_v1.3")
-FIG_DIR = os.path.join(BASE_DIR, "Figures")
+DATASET_PATH = os.path.join(BASE_DIR, "PANOPTICON_v1.4")
+FIG_DIR = os.path.join(BASE_DIR, "Figures1.4")
 
 dataset = load_from_disk(DATASET_PATH)
 
@@ -204,12 +204,6 @@ def lexical_diversity_metrics(dataset, max_prompts=20000):
     }
 
 
-# -------------------------------------------------------------------
-# 4. SBERT-based diversity metrics
-#    - Average pairwise cosine distance (approx)
-#    - Redundancy rate (nearest-neighbor distance)
-#    - PCA projection figure
-# -------------------------------------------------------------------
 def compute_sbert_embeddings(
     dataset, sample_size=5000, model_name="sentence-transformers/all-mpnet-base-v2"
 ):
@@ -282,6 +276,8 @@ def sbert_diversity_metrics(
     )
 
     # PCA visualization
+
+    
     print("[SBERT] Computing PCA projection for visualization...")
     pca = PCA(n_components=2)
     emb_2d = pca.fit_transform(emb)
@@ -294,14 +290,19 @@ def sbert_diversity_metrics(
 
     plt.figure(figsize=(10, 8))
     plt.scatter(x, y, s=5, alpha=0.4)
-    plt.title("PANOPTICON SBERT Embeddings (PCA, sampled)")
-    plt.xlabel("PC1")
-    plt.ylabel("PC2")
+
+    # Axis labels: bigger + bold
+    plt.xlabel("PC1", fontsize=16, fontweight="bold")
+    plt.ylabel("PC2", fontsize=16, fontweight="bold")
+
+    # Optional: make tick labels bigger (recommended for readability)
+    plt.tick_params(axis="both", which="major", labelsize=12)
 
     ensure_fig_dir()
     out_path = os.path.join(FIG_DIR, "panopticon_sbert_pca.png")
     plt.savefig(out_path, dpi=300, bbox_inches="tight")
     plt.close()
+
     print(f"[SBERT] PCA figure saved to: {out_path}")
 
     return {
@@ -311,9 +312,6 @@ def sbert_diversity_metrics(
     }
 
 
-# -------------------------------------------------------------------
-# 5. Word cloud over prompts
-# -------------------------------------------------------------------
 def generate_prompt_wordcloud(dataset, max_prompts=20000):
     print("[WordCloud] Generating prompt word cloud...")
     _ensure_nltk_stopwords()
@@ -346,11 +344,26 @@ def generate_prompt_wordcloud(dataset, max_prompts=20000):
     plt.close()
     print(f"[WordCloud] Figure saved to: {out_path}")
 
+def check_pii_leakage(dataset):
+    leak = []
+    for d in dataset:
+        if d['Category'] == 'Benign':
+            pii = d['PromptPII']
+            leaked_pii = {k: v for k, v in pii.items() if v is not None}
+            if leaked_pii:
+                leak.append(leaked_pii)
+    return leak
 
-# -------------------------------------------------------------------
-# Main
-# -------------------------------------------------------------------
+
 if __name__ == "__main__":
+
+
+
+    '''leaks = check_pii_leakage(dataset)
+    print(f'numm leaks {len(leaks)}')
+    print('------------')
+    print(leaks)'''
+
     ensure_fig_dir()
 
     # 1. Duplicate analysis
@@ -360,17 +373,17 @@ if __name__ == "__main__":
     labels = handle_pii_labels(dataset)
 
     # 3. Lexical diversity metrics
-    lexical_stats = lexical_diversity_metrics(dataset, max_prompts=20000)
+    lexical_stats = lexical_diversity_metrics(dataset, max_prompts=100_000)
 
     # 4. SBERT-based diversity metrics
     sbert_stats = sbert_diversity_metrics(
         dataset,
-        sample_size=5000,  # adjust up/down depending on compute
+        sample_size=len(dataset),  # adjust up/down depending on compute
         model_name="sentence-transformers/all-mpnet-base-v2",
     )
 
     # 5. Prompt word cloud
-    generate_prompt_wordcloud(dataset, max_prompts=20000)
+    generate_prompt_wordcloud(dataset, max_prompts=100_000)
 
     print("\n=== SUMMARY METRICS ===")
     print("Lexical:", lexical_stats)

@@ -14,7 +14,7 @@ from datasets import load_from_disk
 
 def top_k_top_p_filtering(
     logits: torch.Tensor,
-    top_k: int = 0,
+    top_k: int = 10,
     top_p: float = 1.0,
     filter_value: float = float("-inf"),
 ) -> torch.Tensor:
@@ -307,10 +307,10 @@ class Inversion:
         model,
         *,
         attention_mask=None,
-        filter_top_k=50,
+        filter_top_k=10,
         filter_top_p=1.0,
         next_ids=None,
-        top_k=None,
+        top_k=10,
         **kwargs, 
     ):
         device = self._device
@@ -542,7 +542,7 @@ def compute_pii_metrics(gt_pii, guess_pii):
     return precision, recall, f1
 
 if __name__=='__main__':
-    PANOPTICON_PATH = "../PANOPTICON_v1.2"
+    PANOPTICON_PATH = "../PANOPTICON_v1.4"
     MAX_SAMPLES = 1000   # <-- change to however many you want
 
     pan_ds = load_from_disk(PANOPTICON_PATH)

@@ -56,16 +56,12 @@ def match_pii(og_prompt: str, pii_values: dict) -> dict:
     pii = {}
 
     for k,v in pii_values.items():
-        #Base Case
-        if v in og_prompt or v.lower() in og_prompt:
-            pii[k] = v
-
-        #Special Cases
-        elif k in ('First Name', 'Last Name', 'Gender', 'Nationality', 'Marital Status', 'Finance Status'):
+        
+        if k in ('First Name', 'Last Name', 'Gender', 'Nationality', 'Marital Status', 'Finance Status', 'Birth City', 'Disability', 'Employer', 'Education Info', 'Allergies', 'Job Title'):
             if v in re.findall(basic_text, og_prompt) or v.lower() in re.findall(basic_text, og_prompt):
                 pii[k]=v
 
-        elif k in ("Father's Name", "Mother's Name", 'Spouse Name', 'Allergies', 'Emergency Contact Name', 'Job Title',  'Birth City', 'Disability', 'Education Info', 'Employer'):
+        elif k in ("Father's Name", "Mother's Name", 'Spouse Name', 'Emergency Contact Name'):
             names = v.split()
             name = ''
             for n in names:
@@ -80,14 +76,11 @@ def match_pii(og_prompt: str, pii_values: dict) -> dict:
             if v in prompt:
                 pii[k]=v
 
-        
+
         elif k == 'Children Count':
-            if v == '0':
-                pass
-            elif 'child' in og_prompt or 'children' in og_prompt:
+            if ('child' in og_prompt) or ('Child' in og_prompt) or ('children' in og_prompt) or ('Children' in og_prompt) or ('kid' in og_prompt) or ('Kid' in og_prompt) or ('Kids' in og_prompt) or ('kids' in og_prompt):
                 pii[k]=v
-            elif child_map[v] in og_prompt:
-                pii[k]=v
+
 
         elif k in ('National ID', 'Passport Number', "Driver's License"):
             prompt = re.findall(alphanumeric, og_prompt)
@@ -101,21 +94,25 @@ def match_pii(og_prompt: str, pii_values: dict) -> dict:
             if v_norm and v_norm in normalized_matches:
                 pii[k] = v
 
+
         elif k in ('Email Address', 'Work Email'):
             matches = re.findall(email, og_prompt)
             if v in matches:
                 pii[k] = v
 
+
         elif k == 'Birth Date':
             prompt = re.findall(birthday, og_prompt)
             if v in prompt:
                 pii[k]=v
+
         
         elif k in ("Annual Salary", "Net Worth"):
             prompt = og_prompt.replace(',','')
             prompt = re.findall(money, prompt)
             if v in prompt:
                 pii[k] = v
+
 
         #Complex Cases
         elif k == 'Address':
@@ -129,7 +126,10 @@ def match_pii(og_prompt: str, pii_values: dict) -> dict:
             if not val:
                 pass
             else:
-                pii[k]=val
+                if len(val.split()) < 2:
+                    pass
+                else:
+                    pii[k]=val
 
         elif k == 'Social Media Handles':
             if pii_values[k] == '{}':
@@ -141,6 +141,7 @@ def match_pii(og_prompt: str, pii_values: dict) -> dict:
                     if handle in og_prompt:
                         pii[platform] = handle
  
+
     return pii
 
 if __name__ == '__main__':
