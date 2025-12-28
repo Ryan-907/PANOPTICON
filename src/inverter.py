@@ -543,8 +543,7 @@ def compute_pii_metrics(gt_pii, guess_pii):
 
 if __name__=='__main__':
     PANOPTICON_PATH = "../PANOPTICON_v1.4"
-    MAX_SAMPLES = 1000   # <-- change to however many you want
-
+    MAX_SAMPLES = 1000  
     pan_ds = load_from_disk(PANOPTICON_PATH)
     pano_p = PanoPlus()
     panop_id = pano_p.get_ids()  # full PII per profile ID

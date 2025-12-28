@@ -57,7 +57,7 @@ def match_pii(og_prompt: str, pii_values: dict) -> dict:
 
     for k,v in pii_values.items():
         
-        if k in ('First Name', 'Last Name', 'Gender', 'Nationality', 'Marital Status', 'Finance Status', 'Birth City', 'Disability', 'Employer', 'Education Info', 'Allergies', 'Job Title'):
+        if k in ('First Name', 'Last Name', 'Gender', 'Nationality', 'Marital Status', 'Finance Status', 'Birth City', 'Disability', 'Employer', 'Education Info', 'Allergies', 'Job Title', 'Blood Type'):
             if v in re.findall(basic_text, og_prompt) or v.lower() in re.findall(basic_text, og_prompt):
                 pii[k]=v
 
@@ -115,7 +115,7 @@ def match_pii(og_prompt: str, pii_values: dict) -> dict:
 
 
         #Complex Cases
-        elif k == 'Address':
+        elif k in ('Address', 'Birth City'):
             val = ''
             prompt = re.findall(address_pattern, og_prompt)
             check = re.findall(address_pattern, v)
@@ -126,7 +126,7 @@ def match_pii(og_prompt: str, pii_values: dict) -> dict:
             if not val:
                 pass
             else:
-                if len(val.split()) < 2:
+                if k == 'Address' and len(val.split()) < 2:
                     pass
                 else:
                     pii[k]=val
