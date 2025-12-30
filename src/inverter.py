@@ -62,9 +62,12 @@ class LargeLangModel:
     model: Optional[AutoModelForCausalLM] = field(init=False, default=None)
 
     def __post_init__(self) -> None:
+        use_cuda = torch.cuda.is_available()
+        dtype = self.torch_dtype if use_cuda else torch.float32
+
         self.base_model = AutoModelForCausalLM.from_pretrained(
             self.model_name,
-            torch_dtype=self.torch_dtype,
+            torch_dtype=dtype,
             trust_remote_code=True,
             **{"low_cpu_mem_usage": True, "use_cache": False}
         )
@@ -83,15 +86,27 @@ class LargeLangModel:
 
         # If no lora_model is provided
         if not self.lora_model_name:
-            num_gpus = torch.cuda.device_count()
-            for n in range(self.n_model_layers):
-                self.model_layers.append("model.layers." + str(n))
-                self.device_map[self.model_layers[n]] = int(n / self.n_model_layers * num_gpus)
+            if use_cuda:
+                num_gpus = torch.cuda.device_count()
+                for n in range(self.n_model_layers):
+                    self.model_layers.append("model.layers." + str(n))
+                    self.device_map[self.model_layers[n]] = int(n / self.n_model_layers * num_gpus)
 
-            self.device_map["model.embed_tokens"] = 0
-            self.device_map["model.norm"] = num_gpus - 1
-            self.device_map["lm_head"] = num_gpus - 1
-            self.model = dispatch_model(self.base_model, device_map=self.device_map)
+                self.device_map["model.embed_tokens"] = 0
+                self.device_map["model.norm"] = num_gpus - 1
+                self.device_map["lm_head"] = num_gpus - 1
+                try:
+                    self.model = dispatch_model(self.base_model, device_map=self.device_map)
+                except RuntimeError as e:
+                    # Fallback for driver mismatch: stay on CPU
+                    print(f"[WARN] dispatch_model failed ({e}); falling back to CPU.")
+                    self.device_map = {"": "cpu"}
+                    self.model = self.base_model.to("cpu")
+                    use_cuda = False
+
+            if not use_cuda:
+                self.device_map = {"": "cpu"}
+                self.model = self.base_model.to("cpu")
 
             if hasattr(self.model, "gradient_checkpointing_enable"):
                 self.model.gradient_checkpointing_enable()
@@ -100,24 +115,39 @@ class LargeLangModel:
         
         #If LoRA model is provided
         else:
-            num_gpus = torch.cuda.device_count()
+            if use_cuda:
+                num_gpus = torch.cuda.device_count()
 
-            for n in range(self.n_model_layers):
-                layer_name = f"base_model.model.layers.{n}"   # was base_model.model.model.layers
-                self.model_layers.append(layer_name)
-                self.device_map[layer_name] = int(n / self.n_model_layers * num_gpus)
+                for n in range(self.n_model_layers):
+                    layer_name = f"base_model.model.layers.{n}"   # was base_model.model.model.layers
+                    self.model_layers.append(layer_name)
+                    self.device_map[layer_name] = int(n / self.n_model_layers * num_gpus)
 
-            self.device_map["base_model.model.embed_tokens"] = 0   # was ...model.model.embed_tokens
-            self.device_map["base_model.model.norm"] = num_gpus - 1
-            self.device_map["base_model.lm_head"] = num_gpus - 1   # was base_model.model.lm_head
+                self.device_map["base_model.model.embed_tokens"] = 0   # was ...model.model.embed_tokens
+                self.device_map["base_model.model.norm"] = num_gpus - 1
+                self.device_map["base_model.lm_head"] = num_gpus - 1   # was base_model.model.lm_head
 
-            lora_model = PeftModel.from_pretrained(
-                self.base_model,
-                self.lora_model_name,
-                torch_dtype=self.torch_dtype
-            )
+                lora_model = PeftModel.from_pretrained(
+                    self.base_model,
+                    self.lora_model_name,
+                    torch_dtype=dtype
+                )
 
-            self.model = dispatch_model(lora_model, device_map=self.device_map)
+                try:
+                    self.model = dispatch_model(lora_model, device_map=self.device_map)
+                except RuntimeError as e:
+                    print(f"[WARN] dispatch_model failed ({e}); falling back to CPU.")
+                    self.device_map = {"": "cpu"}
+                    self.model = lora_model.to("cpu")
+                    use_cuda = False
+            if not use_cuda:
+                self.device_map = {"": "cpu"}
+                lora_model = PeftModel.from_pretrained(
+                    self.base_model,
+                    self.lora_model_name,
+                    torch_dtype=dtype
+                )
+                self.model = lora_model.to("cpu")
 
             if hasattr(self.model, "gradient_checkpointing_enable"):
                 self.model.gradient_checkpointing_enable()
