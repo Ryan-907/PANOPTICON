@@ -7,9 +7,8 @@ from accelerate import dispatch_model
 from peft import PeftModel
 from datasets import load_from_disk 
 import re
-from ast import literal_eval
-from utils.PanoHandler import PanoPlus, match_pii
-from datasets import load_from_disk
+from utils.PanoHandler import PanoPlus
+from utils.pii_handler import match_pii
 
 
 def top_k_top_p_filtering(
@@ -541,10 +540,50 @@ def compute_pii_metrics(gt_pii, guess_pii):
 
     return precision, recall, f1
 
+
+def prompt_has_pii(row) -> bool:
+    """Return True if the PromptPII dict contains any non-empty value."""
+    pii = row.get("PromptPII", {})
+    if not isinstance(pii, dict):
+        return False
+    for v in pii.values():
+        if v not in (None, "", {}, [], "{}", "N/A"):
+            return True
+    return False
+
+
+def tokenize_words(text: str) -> List[str]:
+    return re.findall(r"[A-Za-z0-9']+", text.lower())
+
+
+def extract_pii_tokens(pii: dict) -> set:
+    """Flatten PII values into a token set for token-level recall/precision."""
+    if not isinstance(pii, dict):
+        return set()
+    tokens = set()
+    for val in pii.values():
+        if val in (None, "", {}, [], "{}", "N/A"):
+            continue
+        if isinstance(val, dict):
+            vals = val.values()
+        elif isinstance(val, list):
+            vals = val
+        else:
+            vals = [val]
+        for v in vals:
+            if v in (None, "", "N/A"):
+                continue
+            tokens.update(tokenize_words(str(v)))
+    return tokens
+
 if __name__=='__main__':
     PANOPTICON_PATH = "../PANOPTICON_v1.4"
     MAX_SAMPLES = 1000  
     pan_ds = load_from_disk(PANOPTICON_PATH)
+    pan_ds = pan_ds.filter(lambda ex: prompt_has_pii(ex))
+    if len(pan_ds) > MAX_SAMPLES:
+        pan_ds = pan_ds.shuffle(seed=42).select(range(MAX_SAMPLES))
+
     pano_p = PanoPlus()
     panop_id = pano_p.get_ids()  # full PII per profile ID
 
@@ -552,13 +591,17 @@ if __name__=='__main__':
     inf = Inference(model=lm.model, tokenizer=lm.tokenizer)
     inv = Inversion(model=lm.model, tokenizer=lm.tokenizer)
 
-    layer_id = lm.n_layers - 1
+    layer_id = lm.n_model_layers - 1
 
     # Running totals
     total_prec = 0.0
     total_rec  = 0.0
     total_f1   = 0.0
     total_acc  = 0.0   # token-level accuracy from inv.invert (if that's what `acc` is)
+    total_prompt_token_recall = 0.0
+    total_prompt_token_precision = 0.0
+    total_pii_token_recall = 0.0
+    total_pii_token_precision = 0.0
 
     count = 0          # total samples we included in the averages
     pii_count = 0      # how many of those actually had GT PII (optional, but useful)
@@ -614,8 +657,25 @@ if __name__=='__main__':
             total_f1   += f1
             pii_count  += 1
 
+            gt_pii_tokens = extract_pii_tokens(gt_prompt_pii)
+            guess_tokens = set(tokenize_words(guess_prompt))
+            guess_pii_tokens = extract_pii_tokens(guess_prompt_pii)
+            if gt_pii_tokens:
+                overlap = len(gt_pii_tokens & guess_tokens)
+                total_pii_token_recall += overlap / len(gt_pii_tokens)
+            if guess_pii_tokens:
+                total_pii_token_precision += len(gt_pii_tokens & guess_pii_tokens) / len(guess_pii_tokens)
+
         # token-level accuracy from inversion (if you care about overall textual accuracy)
         total_acc += acc
+
+        # prompt-level token precision/recall for the whole sentence
+        gt_prompt_tokens = set(tokenize_words(gt_prompt))
+        guess_prompt_tokens = set(tokenize_words(guess_prompt))
+        if gt_prompt_tokens:
+            total_prompt_token_recall += len(gt_prompt_tokens & guess_prompt_tokens) / len(gt_prompt_tokens)
+        if guess_prompt_tokens:
+            total_prompt_token_precision += len(gt_prompt_tokens & guess_prompt_tokens) / len(guess_prompt_tokens)
 
         count += 1
 
@@ -627,6 +687,10 @@ if __name__=='__main__':
 
     # token-level accuracy: averaged over all processed samples
     avg_acc       = total_acc  / count     if count > 0 else 0.0
+    avg_prompt_token_recall = total_prompt_token_recall / count if count > 0 else 0.0
+    avg_prompt_token_precision = total_prompt_token_precision / count if count > 0 else 0.0
+    avg_pii_token_recall = total_pii_token_recall / pii_count if pii_count > 0 else 0.0
+    avg_pii_token_precision = total_pii_token_precision / pii_count if pii_count > 0 else 0.0
 
     summary = {
         "samples_processed": count,
@@ -634,7 +698,11 @@ if __name__=='__main__':
         "avg_precision": avg_precision,
         "avg_recall": avg_recall,
         "avg_f1": avg_f1,
-        "avg_token_accuracy": avg_acc
+        "avg_token_accuracy": avg_acc,
+        "avg_prompt_token_recall": avg_prompt_token_recall,
+        "avg_prompt_token_precision": avg_prompt_token_precision,
+        "avg_pii_token_recall": avg_pii_token_recall,
+        "avg_pii_token_precision": avg_pii_token_precision
     }
 
     print("\n=== SUMMARY OVER", count, "EXAMPLES ===")

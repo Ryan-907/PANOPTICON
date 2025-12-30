@@ -14,6 +14,19 @@ money = re.compile(r'[0-9$£€₹₱SR]+(?:\.\d+)')
 
 phone_number = re.compile(r'\+?\d[\d\-\s\(\)]{4,}\d')
 
+# Common filler/stop tokens to avoid matching benign overlaps (esp. addresses)
+STOPWORDS = {
+    'a', 'an', 'and', 'are', 'as', 'at', 'be', 'by', 'for', 'from', 'in', 'into',
+    'is', 'it', 'of', 'on', 'or', 'that', 'the', 'this', 'to', 'was', 'were',
+    'with', 'your', 'my', 'our', 'their', 'his', 'her', 'its', 'these', 'those',
+    'after', 'before', 'between', 'during', 'about', 'over', 'under', 'out',
+    'up', 'down', 'north', 'south', 'east', 'west', 'n', 's', 'e', 'w', 'way',
+    'road', 'street', 'st', 'rd', 'ave', 'avenue', 'blvd', 'boulevard', 'lane',
+    'ln', 'drive', 'dr', 'court', 'ct', 'circle', 'cir', 'place', 'pl',
+    'parkway', 'pkwy', 'trail', 'trl', 'highway', 'hwy', 'route', 'unit', 'apt',
+    'suite', 'floor', 'fl'
+}
+
 def normalize_phone(p: str) -> str:
     p = p.strip()
 
@@ -27,6 +40,47 @@ def normalize_phone(p: str) -> str:
     return ('+' if plus else '') + digits
 
 address_pattern = re.compile(r"[A-Za-z0-9']+")
+
+
+def _tokenize_words(text: str) -> list[str]:
+    return re.findall(address_pattern, text)
+
+
+def _phrase_in_prompt(value: str, prompt: str) -> bool:
+    """Case-insensitive whole-word/phrase check with boundaries."""
+    if not value:
+        return False
+    try:
+        return bool(re.search(rf'\b{re.escape(value)}\b', prompt, re.IGNORECASE))
+    except re.error:
+        return False
+
+
+def _partial_match(value: str, prompt_tokens: set[str], *, require_two: bool = False, allow_digits: bool = True) -> str:
+    """Return meaningful overlapping tokens, filtering stopwords and weak singles."""
+    tokens = _tokenize_words(value)
+    matched = []
+    strong = 0
+
+    for tok in tokens:
+        low_tok = tok.lower()
+        if low_tok in STOPWORDS:
+            continue
+        if not allow_digits and tok.isdigit():
+            continue
+        if low_tok in prompt_tokens:
+            matched.append(tok)
+            # digits or longer tokens are stronger signals
+            if tok.isdigit() or len(low_tok) >= 5:
+                strong += 1
+
+    if require_two:
+        # Accept if we have 2+ tokens or at least one strong token
+        if len(matched) >= 2 or strong:
+            return ' '.join(matched)
+        return ''
+
+    return ' '.join(matched) if matched else ''
 
 child_map = {'1':'one','2':'two', '3':'three', '4':'four'}
 #6 pools (+ benign handled elsewhere). All relevant PII attributes from PANORAMA (excluding Unique ID, Locale, and Complete Info as potential attributes)
@@ -52,40 +106,34 @@ def sample_pii(pool: int, full_pii: dict) -> dict[str: str]:
 
 
 def match_pii(og_prompt: str, pii_values: dict) -> dict:
-
+    prompt_tokens = set(tok.lower() for tok in _tokenize_words(og_prompt))
     pii = {}
 
-    for k,v in pii_values.items():
-        
+    for k, v in pii_values.items():
+        # Simple text fields (whole phrase if possible; otherwise strong token overlap)
         if k in ('First Name', 'Last Name', 'Gender', 'Nationality', 'Marital Status', 'Finance Status', 'Birth City', 'Disability', 'Employer', 'Education Info', 'Allergies', 'Job Title', 'Blood Type'):
-            if v in re.findall(basic_text, og_prompt) or v.lower() in re.findall(basic_text, og_prompt):
-                pii[k]=v
+            if _phrase_in_prompt(v, og_prompt) or _partial_match(v, prompt_tokens):
+                pii[k] = v
 
+        # Multi-part names: require at least two parts or one strong token to avoid lone benign words
         elif k in ("Father's Name", "Mother's Name", 'Spouse Name', 'Emergency Contact Name'):
-            names = v.split()
-            name = ''
-            for n in names:
-                if n in re.findall(basic_text, og_prompt) or n.lower() in re.findall(basic_text, og_prompt):
-                    name+=f'{n} '
-            name = name.rstrip()
-            if name:
-                pii[k]=name
+            match_val = _partial_match(v, prompt_tokens, require_two=True, allow_digits=False)
+            if match_val:
+                pii[k] = match_val
 
         elif k in ('Age', 'Credit Score'):
-            prompt = re.findall(basic_number, og_prompt)
-            if v in prompt:
-                pii[k]=v
-
+            prompt_nums = re.findall(basic_number, og_prompt)
+            if v in prompt_nums:
+                pii[k] = v
 
         elif k == 'Children Count':
-            if ('child' in og_prompt) or ('Child' in og_prompt) or ('children' in og_prompt) or ('Children' in og_prompt) or ('kid' in og_prompt) or ('Kid' in og_prompt) or ('Kids' in og_prompt) or ('kids' in og_prompt):
-                pii[k]=v
-
+            if any(word in og_prompt for word in ('child', 'Child', 'children', 'Children', 'kid', 'Kid', 'Kids', 'kids')):
+                pii[k] = v
 
         elif k in ('National ID', 'Passport Number', "Driver's License"):
             prompt = re.findall(alphanumeric, og_prompt)
             if v in prompt:
-                pii[k]=v
+                pii[k] = v
 
         elif k in ('Phone Number', 'Work Phone', 'Emergency Contact Phone'):
             matches = re.findall(phone_number, og_prompt)
@@ -94,53 +142,41 @@ def match_pii(og_prompt: str, pii_values: dict) -> dict:
             if v_norm and v_norm in normalized_matches:
                 pii[k] = v
 
-
         elif k in ('Email Address', 'Work Email'):
             matches = re.findall(email, og_prompt)
             if v in matches:
                 pii[k] = v
 
-
         elif k == 'Birth Date':
             prompt = re.findall(birthday, og_prompt)
             if v in prompt:
-                pii[k]=v
+                pii[k] = v
 
-        
         elif k in ("Annual Salary", "Net Worth"):
-            prompt = og_prompt.replace(',','')
+            prompt = og_prompt.replace(',', '')
             prompt = re.findall(money, prompt)
             if v in prompt:
                 pii[k] = v
 
+        # Complex Cases
+        elif k == 'Address':
+            # Need at least two meaningful overlaps or one strong (number/long) token to accept
+            val = _partial_match(v, prompt_tokens, require_two=True)
+            if val:
+                pii[k] = val
 
-        #Complex Cases
-        elif k in ('Address', 'Birth City'):
-            val = ''
-            prompt = re.findall(address_pattern, og_prompt)
-            check = re.findall(address_pattern, v)
-            for i in check:
-                if i in prompt:
-                    val+=f'{i} '
-            val = val.rstrip()
-            if not val:
-                pass
-            else:
-                if k == 'Address' and len(val.split()) < 2:
-                    pass
-                else:
-                    pii[k]=val
+        elif k == 'Birth City':
+            val = _partial_match(v, prompt_tokens)
+            if val:
+                pii[k] = val
 
         elif k == 'Social Media Handles':
             if pii_values[k] == '{}':
-                pass
-
-            else:
-                handles = literal_eval(v)
-                for platform, handle in handles.items():
-                    if handle in og_prompt:
-                        pii[platform] = handle
- 
+                continue
+            handles = literal_eval(v)
+            for platform, handle in handles.items():
+                if _phrase_in_prompt(handle, og_prompt):
+                    pii[platform] = handle
 
     return pii
 
