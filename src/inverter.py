@@ -268,6 +268,7 @@ class Inversion:
 
     def _forward_last_hidden_state(self, model, input_ids, attention_mask, layer_id, inputs_embeds=None):
         device = self._device
+        emb_dtype = self._emb.weight.dtype
 
         # normalize inputs
         ids = None
@@ -284,7 +285,7 @@ class Inversion:
         mask = attention_mask.to(device) if attention_mask is not None else None
         new_inputs = {'attention_mask': mask}
         if inputs_embeds is not None:
-            new_inputs['inputs_embeds'] = inputs_embeds.to(device)
+            new_inputs['inputs_embeds'] = inputs_embeds.to(device=device, dtype=emb_dtype)
         else:
             new_inputs['input_ids'] = ids
 
@@ -410,10 +411,11 @@ class Inversion:
         """Constrained optimization toward target activation with manifold regularizer."""
         device = self._device
         emb_weight = self._emb.weight.to(device)
+        emb_dtype = emb_weight.dtype
 
         # init around embedding mean with small noise (no ground-truth leakage)
         emb_mean = emb_weight.mean(dim=0, keepdim=True)
-        v_hat = (emb_mean + 0.01 * torch.randn(seq_len, emb_mean.size(1), device=device)).clone().detach()
+        v_hat = (emb_mean + 0.01 * torch.randn(seq_len, emb_mean.size(1), device=device, dtype=emb_dtype)).clone().detach()
         v_hat.requires_grad_(True)
 
         opt = torch.optim.Adam([v_hat], lr=lr)
@@ -532,7 +534,7 @@ class Inversion:
 
         target_act = self._as_seq(hidden_state).unsqueeze(0) if hidden_state.dim() == 2 else hidden_state
         seq_len = target_act.size(1)
-        attn = attention_mask if attention_mask is not None else torch.ones(1, seq_len, device=self._device)
+        attn = attention_mask if attention_mask is not None else torch.ones(1, seq_len, device=self._device, dtype=torch.long)
 
         if refine:
             v_hat = self._optimize_embeddings(
