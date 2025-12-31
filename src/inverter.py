@@ -430,6 +430,9 @@ class Inversion:
                 layer_id=layer_id,
                 inputs_embeds=v_hat.unsqueeze(0)
             )
+            # align devices/dtypes
+            act = act.to(device)
+            tgt = tgt.to(device)
             loss_main = F.mse_loss(act, tgt)
 
             # manifold regularizer: distance to nearest embeddings (approx via top-k)
@@ -497,7 +500,10 @@ class Inversion:
                     layer_id=layer_id,
                     inputs_embeds=embeds.unsqueeze(0)
                 )
-                dist = F.mse_loss(act[:, i, :], target_act[:, i, :])
+                dist = F.mse_loss(
+                    act[:, i, :].to(self._device),
+                    target_act[:, i, :].to(self._device)
+                )
                 if best_dist is None or dist < best_dist:
                     best_dist = dist
                     best_tok = tok
