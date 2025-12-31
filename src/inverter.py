@@ -67,7 +67,7 @@ class LargeLangModel:
 
         self.base_model = AutoModelForCausalLM.from_pretrained(
             self.model_name,
-            torch_dtype=dtype,
+            dtype=dtype,
             trust_remote_code=True,
             **{"low_cpu_mem_usage": True, "use_cache": False}
         )
@@ -130,7 +130,7 @@ class LargeLangModel:
                 lora_model = PeftModel.from_pretrained(
                     self.base_model,
                     self.lora_model_name,
-                    torch_dtype=dtype
+                    dtype=dtype
                 )
 
                 try:
@@ -145,7 +145,7 @@ class LargeLangModel:
                 lora_model = PeftModel.from_pretrained(
                     self.base_model,
                     self.lora_model_name,
-                    torch_dtype=dtype
+                    dtype=dtype
                 )
                 self.model = lora_model.to("cpu")
 
@@ -378,7 +378,10 @@ class Inversion:
 
     def _nn_topk(self, vec: torch.Tensor, method: str, top_k: int) -> torch.Tensor:
         """Return top-k token IDs by similarity between vec and embedding matrix."""
+        # Ensure both vec and embedding matrix are on the same device (dispatch_model may shard)
         W = self._emb.weight
+        if W.device != vec.device:
+            W = W.to(vec.device)
         if method == "L2":
             dist = -torch.norm(W - vec, p=2, dim=1)                 # bigger=better
             return torch.topk(dist, top_k).indices
