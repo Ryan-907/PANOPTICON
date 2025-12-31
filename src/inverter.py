@@ -168,42 +168,17 @@ class Inference:
         emb = core.get_input_embeddings()
         return emb.weight.device
 
-    def _register_hooks_up_to(self, layer_id: int):
-        # full hook for layer 0, forward hook for layers 1..layer_id
-        def forward_hook(module, inputs, output):
-            if isinstance(output, tuple):
-                for item in output:
-                    self.hidden_states.append(item)
-            else:
-                self.hidden_states.append(output)
+    def _register_layer_output(self, layer_id: int):
+        """Capture output of a single transformer block matching layer_id."""
+        def hook(module, inputs, output):
+            self.hidden_states.append(output[0] if isinstance(output, tuple) else output)
 
-        def full_hook(module, inputs, output):
-            # capture first input tensor (common case) then outputs
-            if isinstance(inputs, tuple):
-                self.hidden_states.append(inputs[0])
-            else:
-                self.hidden_states.append(inputs)
-            if isinstance(output, tuple):
-                for item in output:
-                    self.hidden_states.append(item)
-            else:
-                self.hidden_states.append(output)
-
+        target_suffixes = (f"layers.{layer_id}", f"model.layers.{layer_id}")
         for name, module in self.model.named_modules():
-            if len(name) == 0:
-                continue
-            if name[-1].isdigit():
-                # single-digit index
-                if not name[-2].isdigit() and int(name[-1]) == 0:
-                    h = module.register_forward_hook(full_hook)
-                    self.hook_handles.append(h)
-                elif not name[-2].isdigit() and int(name[-1]) <= layer_id:
-                    h = module.register_forward_hook(forward_hook)
-                    self.hook_handles.append(h)
-                # double-digit (or more) index
-                elif name[-2].isdigit() and int(name[-2:]) <= layer_id:
-                    h = module.register_forward_hook(forward_hook)
-                    self.hook_handles.append(h)
+            if any(name.endswith(suf) for suf in target_suffixes):
+                h = module.register_forward_hook(hook)
+                self.hook_handles.append(h)
+                break
 
     def _remove_hooks(self):
         for h in self.hook_handles:
@@ -239,7 +214,7 @@ class Inference:
                     "attention_mask": target_attention_mask
                 }
 
-                self._register_hooks_up_to(layer_id)
+                self._register_layer_output(layer_id)
                 _ = self.model(**inputs)
 
                 # recover the exact input embeddings used
@@ -255,7 +230,7 @@ class Inference:
                     "attention_mask": attention_mask.to(device) if attention_mask is not None else None
                 }
 
-                self._register_hooks_up_to(layer_id)
+                self._register_layer_output(layer_id)
                 _ = self.model(**inputs)
 
                 target_attention_mask = inputs["attention_mask"]
@@ -282,27 +257,36 @@ class Inversion:
         self._core = getattr(self.model, "model", self.model)
         self._emb = self._core.get_input_embeddings()
         self._device = self._emb.weight.device
+        with torch.no_grad():
+            self._emb_min = self._emb.weight.min(dim=0).values
+            self._emb_max = self._emb.weight.max(dim=0).values
 
         if self.forward_last_hidden is None:
             self.forward_last_hidden = self._forward_last_hidden_state
         if self.perplexity_fn is None:
             self.perplexity_fn = self._get_per_token_probs 
 
-    def _forward_last_hidden_state(self, model, input_ids, attention_mask, layer_id):
+    def _forward_last_hidden_state(self, model, input_ids, attention_mask, layer_id, inputs_embeds=None):
         device = self._device
 
-        # ensure tensor[batch, seq] with long dtype
-        if isinstance(input_ids, torch.Tensor):
-            ids = input_ids
-        else:
-            ids = torch.tensor(input_ids, dtype=torch.long)
+        # normalize inputs
+        ids = None
+        if inputs_embeds is None:
+            if isinstance(input_ids, torch.Tensor):
+                ids = input_ids
+            else:
+                ids = torch.tensor(input_ids, dtype=torch.long)
 
-        if ids.dim() < 2:  # [seq] -> [1, seq]
-            ids = ids.unsqueeze(0)
+            if ids.dim() < 2:  # [seq] -> [1, seq]
+                ids = ids.unsqueeze(0)
+            ids = ids.to(device)
 
-        ids = ids.to(device)
         mask = attention_mask.to(device) if attention_mask is not None else None
-        new_inputs = {'input_ids': ids, 'attention_mask': mask}
+        new_inputs = {'attention_mask': mask}
+        if inputs_embeds is not None:
+            new_inputs['inputs_embeds'] = inputs_embeds.to(device)
+        else:
+            new_inputs['input_ids'] = ids
 
         hidden_state_list: List[torch.Tensor] = []
         hook_handles = []
@@ -314,11 +298,12 @@ class Inversion:
             else:
                 hidden_state_list.append(output)
 
-        # match layer modules by name suffix 
+        target_suffixes = (f"layers.{layer_id}", f"model.layers.{layer_id}")
         for name, module in model.named_modules():
-            if len(name) > 1 and name[-2:] == str(layer_id):
+            if any(name.endswith(suf) for suf in target_suffixes):
                 h = module.register_forward_hook(forward_hook)
                 hook_handles.append(h)
+                break
 
         _ = model(**new_inputs)
 
@@ -408,6 +393,117 @@ class Inversion:
                 return tid
         return int(cand_ids[0].item())
 
+    # ---------- optimization + discretization (paper-inspired) ----------
+
+    def _optimize_embeddings(
+        self,
+        target_act: torch.Tensor,
+        attention_mask: torch.Tensor,
+        layer_id: int,
+        seq_len: int,
+        steps: int = 60,
+        lr: float = 5e-2,
+        lambda_reg: float = 0.1,
+        topk_reg: int = 32,
+        clip_bounds: bool = True,
+    ) -> torch.Tensor:
+        """Constrained optimization toward target activation with manifold regularizer."""
+        device = self._device
+        emb_weight = self._emb.weight.to(device)
+
+        # init around embedding mean with small noise (no ground-truth leakage)
+        emb_mean = emb_weight.mean(dim=0, keepdim=True)
+        v_hat = (emb_mean + 0.01 * torch.randn(seq_len, emb_mean.size(1), device=device)).clone().detach()
+        v_hat.requires_grad_(True)
+
+        opt = torch.optim.Adam([v_hat], lr=lr)
+        tgt = target_act.detach()
+
+        for _ in range(steps):
+            opt.zero_grad()
+            act = self.forward_last_hidden(
+                self.model,
+                input_ids=None,
+                attention_mask=attention_mask,
+                layer_id=layer_id,
+                inputs_embeds=v_hat.unsqueeze(0)
+            )
+            loss_main = F.mse_loss(act, tgt)
+
+            # manifold regularizer: distance to nearest embeddings (approx via top-k)
+            dists = torch.cdist(v_hat, emb_weight)  # [seq, vocab]
+            vals, _ = torch.topk(dists, k=min(topk_reg, dists.size(1)), dim=1, largest=False)
+            loss_reg = vals.mean()
+
+            loss = loss_main + lambda_reg * loss_reg
+            loss.backward()
+            opt.step()
+
+            if clip_bounds:
+                v_hat.data = torch.max(torch.min(v_hat.data, self._emb_max.to(device)), self._emb_min.to(device))
+
+        return v_hat.detach()
+
+    def _activation_calibrated_decode(
+        self,
+        v_hat: torch.Tensor,
+        target_act: torch.Tensor,
+        attention_mask: torch.Tensor,
+        layer_id: int,
+        add_semantic: bool = True,
+        top_k_cos: int = 10,
+        top_k_ppl: int = 10,
+    ) -> List[int]:
+        """Discretize optimized embeddings via activation calibration + semantic speculation."""
+        seq_len = v_hat.size(0)
+        device = self._device
+        base_nearest = []
+        for pos in range(seq_len):
+            base_nearest.append(int(self._nn_topk(v_hat[pos], "cosine", top_k_cos)[0]))
+
+        ret_list = base_nearest.copy()
+
+        for i in range(seq_len):
+            emb_cands = [int(x) for x in self._nn_topk(v_hat[i], "cosine", top_k_cos).tolist()]
+            candidate_ids = list(dict.fromkeys(emb_cands))
+
+            if add_semantic and i > 0:
+                ppl_vals, topk_ids = self.perplexity_fn(
+                    ret_list[:i],
+                    self.model,
+                    layer_id=layer_id,
+                    top_k=top_k_ppl
+                )
+                candidate_ids.extend([int(x) for x in topk_ids.detach().cpu().tolist()])
+                candidate_ids = list(dict.fromkeys(candidate_ids))
+
+            best_tok = candidate_ids[0]
+            best_dist = None
+
+            for tok in candidate_ids:
+                seq = ret_list.copy()
+                seq[i] = tok
+                # ensure full length sequence
+                if len(seq) < seq_len:
+                    seq = seq + base_nearest[len(seq):]
+                seq_tensor = torch.tensor(seq, device=device).unsqueeze(0)
+                embeds = self._emb(seq_tensor).squeeze(0)
+                act = self.forward_last_hidden(
+                    self.model,
+                    input_ids=None,
+                    attention_mask=attention_mask,
+                    layer_id=layer_id,
+                    inputs_embeds=embeds.unsqueeze(0)
+                )
+                dist = F.mse_loss(act[:, i, :], target_act[:, i, :])
+                if best_dist is None or dist < best_dist:
+                    best_dist = dist
+                    best_tok = tok
+
+            ret_list[i] = best_tok
+
+        return ret_list
+
     # ---------- public API ----------
 
     def invert(
@@ -415,12 +511,12 @@ class Inversion:
         hidden_state: torch.Tensor,
         total_input_ids: torch.Tensor,
         *,
-        invert_method: str = "cosine",   # "cosine" or "L2"
+        attention_mask: Optional[torch.Tensor] = None,
+        invert_method: str = "cosine",   # kept for compatibility
         filter_nonascii: bool = True,
-        top_k_cos: int = 10,             # used for both NN and candidate lists
-        refine: bool = False,            # if True, run LM-guided local search
-        layer_id: Optional[int] = None,  # required if refine=True
-        gt_hidden_state: Optional[torch.Tensor] = None,  # defaults to hidden_state
+        top_k_cos: int = 10,             # candidates for NN + calibration
+        refine: bool = True,             # run optimization + discretization
+        layer_id: Optional[int] = None,  # required for refine
         add_perplexity: bool = True,
         top_k_ppl: int = 10,
         logger: Optional[Callable[[str], None]] = None
@@ -431,87 +527,39 @@ class Inversion:
           ret_tokens: str     # decoded tokens (skipping the first token, like original)
           ret_list: List[int] # predicted token ids per position
         """
-        # Prepare sequence-level vectors [seq, dim]
-        seq_vecs = self._as_seq(hidden_state)
-
-        # ---------- Stage 1: Nearest-neighbor baseline ----------
-        ret_list: List[int] = []
-        for pos in range(seq_vecs.size(0)):
-            cand = self._nn_topk(seq_vecs[pos], invert_method, top_k_cos)
-            tid = self._pick_first_ascii(cand, filter_nonascii)
-            ret_list.append(tid)
-
-        # Accuracy vs ground-truth positions (match original semantics)
-        prompt_len = len(total_input_ids[0])
-        acc_cnt = sum(int(total_input_ids[0][j]) == ret_list[j] for j in range(prompt_len))
-        acc = acc_cnt / len(ret_list)
-        ret_tokens = self.tokenizer.decode(ret_list[1:])
-
-        if not refine:
-            return acc, ret_tokens, ret_list
-
-        # ---------- Stage 2: Optional refinement (LM-guided local search) ----------
         if layer_id is None:
-            raise ValueError("refine=True requires layer_id.")
-        if gt_hidden_state is None:
-            gt_hidden_state = hidden_state  # self-consistency target
-        gt_seq = self._as_seq(gt_hidden_state).to(self._device)
+            raise ValueError("invert requires layer_id for boundary activation.")
 
-        # Build candidate lists (top_k_cos by similarity) for each position
-        ret_top_k: List[List[int]] = []
-        for pos in range(seq_vecs.size(0)):
-            cand = self._nn_topk(seq_vecs[pos], invert_method, top_k_cos)
-            ret_top_k.append([int(x) for x in cand.detach().cpu().tolist()])
+        target_act = self._as_seq(hidden_state).unsqueeze(0) if hidden_state.dim() == 2 else hidden_state
+        seq_len = target_act.size(1)
+        attn = attention_mask if attention_mask is not None else torch.ones(1, seq_len, device=self._device)
 
-        if logger:
-            logger("......start replacing......")
-
-        for i, top_list in enumerate(ret_top_k):
-            # Extend candidates with LM top-k conditioned on current prefix
-            if i > 0 and add_perplexity:
-                prefix_ids = ret_list[:i]
-                ppl_vals, topk_ids = self.perplexity_fn(
-                    prefix_ids,
-                    self.model,
-                    layer_id=layer_id,
-                    top_k=top_k_ppl
-                )
-                top_list = top_list + topk_ids.detach().cpu().tolist()
-
-            # Build candidate sequences where only position i varies
-            replaced_ret_list = []
-            for tok in top_list:
-                seq = ret_list.copy()
-                seq[i] = tok
-                replaced_ret_list.append(seq)
-
-            # Forward all candidates to get layer vectors
-            new_hidden_states = self.forward_last_hidden(
-                self.model,
-                replaced_ret_list,
-                None,
-                layer_id=layer_id
+        if refine:
+            v_hat = self._optimize_embeddings(
+                target_act=target_act.to(self._device),
+                attention_mask=attn,
+                layer_id=layer_id,
+                seq_len=seq_len
             )
-            new_hidden_states = new_hidden_states.to(self._device)
+            ret_list = self._activation_calibrated_decode(
+                v_hat=v_hat,
+                target_act=target_act.to(self._device),
+                attention_mask=attn,
+                layer_id=layer_id,
+                add_semantic=add_perplexity,
+                top_k_cos=top_k_cos,
+                top_k_ppl=top_k_ppl
+            )
+        else:
+            # fallback: simple NN decode on target activation
+            seq_vecs = self._as_seq(target_act.squeeze(0))
+            ret_list = []
+            for pos in range(seq_vecs.size(0)):
+                cand = self._nn_topk(seq_vecs[pos], invert_method, top_k_cos)
+                tid = self._pick_first_ascii(cand, filter_nonascii)
+                ret_list.append(tid)
 
-            # Compare only position i vectors vs gt position i
-            cand_pos = new_hidden_states.index_select(
-                1,
-                torch.tensor([i], device=new_hidden_states.device)
-            ).permute(1, 0, 2).squeeze(0).float()   # [batch, dim]
-            gt_pos = gt_seq.index_select(
-                0,
-                torch.tensor([i], device=gt_seq.device)
-            ).squeeze(0).float()  # [dim]
-            gt_pos_exp = gt_pos.unsqueeze(0).expand_as(cand_pos)  # [batch, dim]
-            cos_sim_list = F.cosine_similarity(cand_pos, gt_pos_exp, dim=-1)  # [batch]
-            idx = int(torch.argmax(cos_sim_list).item())
-            ret_list[i] = top_list[idx]  # pick best token at position i
-
-        if logger:
-            logger("......calculating accuracy......")
-
-        # Final accuracy and decoded tokens after refinement
+        prompt_len = len(total_input_ids[0])
         acc_cnt = sum(int(total_input_ids[0][j]) == ret_list[j] for j in range(prompt_len))
         acc = acc_cnt / len(ret_list)
         ret_tokens = self.tokenizer.decode(ret_list[1:])
@@ -667,10 +715,14 @@ if __name__=='__main__':
         acc, ret_tokens, ret_list = inv.invert(
             hidden_state=hidden_state,
             total_input_ids=ids,
+            attention_mask=mask,
             invert_method="cosine",
             filter_nonascii=True,
             top_k_cos=20,
-            refine=False
+            refine=True,
+            layer_id=layer_id,
+            add_perplexity=True,
+            top_k_ppl=10
         )
 
         guess_prompt = ret_tokens
