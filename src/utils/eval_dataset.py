@@ -134,8 +134,10 @@ def handle_pii_labels(dataset):
 
     # Sort labels by count
     sorted_items = sorted(labels.items(), key=lambda x: x[1], reverse=True)
-    labels_sorted = [k for k, v in sorted_items]
-    values_sorted = [v for k, v in sorted_items]
+    # Drop labels that never appear in any prompt
+    filtered_items = [(k, v) for k, v in sorted_items if v > 0]
+    labels_sorted = [k for k, v in filtered_items]
+    values_sorted = [v for k, v in filtered_items]
 
     plt.figure(figsize=(14, 6))
     colors = plt.cm.tab20(np.linspace(0, 1, len(labels_sorted)))
